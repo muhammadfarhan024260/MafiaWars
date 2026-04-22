@@ -20,7 +20,7 @@ function createRoom(hostSocketId, hostName) {
     gameStarted: false,
     configuration: {
       mafiaCount: 1,
-      doctorCount: 1
+      doctorCount: 0
     },
     createdAt: new Date(),
     updatedAt: new Date()

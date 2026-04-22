@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 
 export default function HostDashboard({ roomCode, players, configuration, onUpdateConfig, onStartGame, isGameStarted, onRevealAll, onReset }) {
   const [mafiaCount, setMafiaCount] = useState(configuration?.mafiaCount ?? 1);
-  const [doctorCount, setDoctorCount] = useState(configuration?.doctorCount ?? 1);
+  const [doctorCount, setDoctorCount] = useState(configuration?.doctorCount ?? 0);
 
   useEffect(() => {
     setMafiaCount(configuration?.mafiaCount ?? 1);
-    setDoctorCount(configuration?.doctorCount ?? 1);
+    setDoctorCount(configuration?.doctorCount ?? 0);
   }, [configuration]);
 
 

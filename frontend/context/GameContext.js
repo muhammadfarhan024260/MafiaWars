@@ -12,7 +12,7 @@ export function GameProvider({ children }) {
     playerId: null,
     isHost: false,
     players: [],
-    configuration: { mafiaCount: 1, doctorCount: 1 },
+    configuration: { mafiaCount: 1, doctorCount: 0 },
     gameStarted: false,
     myRole: null,
     showRoleReveal: false,
