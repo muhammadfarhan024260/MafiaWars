@@ -7,7 +7,7 @@ export default function RoleRevelation({ players, onClose }) {
     <div className="min-h-[100dvh] p-6 sm:p-8 animate-reveal">
       <div className="max-w-6xl mx-auto space-y-12">
         <div className="text-center space-y-2">
-          <h1 className="text-5xl sm:text-6xl font-bebas text-white tracking-widest leading-none">
+          <h1 className="text-4xl sm:text-6xl font-bebas text-white tracking-widest leading-none">
             FINAL <span className="text-red-600">REVELATION</span>
           </h1>
           <p className="text-gray-500 text-xs uppercase tracking-[0.3em] font-medium">

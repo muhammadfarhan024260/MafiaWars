@@ -19,6 +19,7 @@
     background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000000 80%), #000;
     color: white;
     min-height: 100dvh;
+    overflow-x: hidden;
     @apply font-sans;
   }
 }

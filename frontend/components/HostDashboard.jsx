@@ -35,7 +35,7 @@ export default function HostDashboard({ roomCode, players, configuration, onUpda
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
           <div className="space-y-1">
-            <h1 className="text-4xl sm:text-5xl font-bebas text-white tracking-widest leading-none">
+            <h1 className="text-3xl sm:text-5xl font-bebas text-white tracking-widest leading-none">
               NARRATOR <span className="text-red-600">COMMAND</span>
             </h1>
             <p className="text-gray-500 text-xs uppercase tracking-widest font-bold">

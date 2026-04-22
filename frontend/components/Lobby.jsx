@@ -36,7 +36,7 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
       <div className="w-full max-w-md space-y-12">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-6xl sm:text-7xl font-bebas text-white tracking-tighter leading-none drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+          <h1 className="text-5xl sm:text-7xl font-bebas text-white tracking-tighter leading-none drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">
             MAFIA <span className="text-red-600">WARS</span>
           </h1>
           <p className="text-gray-500 font-medium tracking-[0.2em] text-xs uppercase">
