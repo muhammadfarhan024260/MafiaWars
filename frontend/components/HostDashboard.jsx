@@ -157,10 +157,11 @@ export default function HostDashboard({ roomCode, players, configuration, onUpda
               </div>
             </div>
             
-            <p className="mt-6 text-[10px] text-gray-600 text-center uppercase tracking-widest font-medium opacity-50">
-              Authorized personnel only.<br/>
-              Narrator is responsible for secrecy.
-            </p>
+            <div className="mt-8 pt-8 border-t border-white/5 text-center">
+              <p className="text-[11px] font-medium text-gray-500 tracking-[0.2em] uppercase opacity-50">
+                Made with ❤️ by <span className="text-red-500/80">MFarhan</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>

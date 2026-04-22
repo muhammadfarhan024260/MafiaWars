@@ -47,21 +47,19 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
         <div className="glass-card p-2 flex mb-8">
           <button
             onClick={() => setActiveTab('create')}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 text-sm uppercase tracking-wider ${
-              activeTab === 'create'
+            className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 text-sm uppercase tracking-wider ${activeTab === 'create'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
                 : 'text-gray-500 hover:text-white'
-            }`}
+              }`}
           >
             Create
           </button>
           <button
             onClick={() => setActiveTab('join')}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 text-sm uppercase tracking-wider ${
-              activeTab === 'join'
+            className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 text-sm uppercase tracking-wider ${activeTab === 'join'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
                 : 'text-gray-500 hover:text-white'
-            }`}
+              }`}
           >
             Join
           </button>
@@ -78,7 +76,7 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
                   type="text"
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="The Godfather"
+                  placeholder="The Marvel"
                   className="input-field"
                   disabled={isLoading}
                 />
@@ -101,7 +99,7 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
                   type="text"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="0000"
+                  placeholder="- - - -"
                   maxLength="4"
                   className="input-field text-center text-3xl font-bebas tracking-[0.5em] h-16"
                   disabled={isLoading}
@@ -131,10 +129,13 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
           )}
         </div>
 
-        <div className="text-center">
+        <div className="text-center pt-8">
           <p className="text-[10px] text-gray-600 uppercase tracking-widest leading-relaxed">
-            Secrecy is paramount.<br/>
+            Secrecy is paramount.<br />
             Keep your device hidden after reveal.
+          </p>
+          <p className="mt-8 text-[11px] font-medium text-gray-500 tracking-[0.2em] uppercase opacity-50">
+            Made with ❤️ by <span className="text-red-500/80">MFarhan</span>
           </p>
         </div>
       </div>

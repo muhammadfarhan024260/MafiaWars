@@ -79,6 +79,11 @@ export default function PlayerScreen({ players, isHost, onRevealAll, onReset }) 
             Reset
           </button>
         </div>
+        <div className="pt-12 text-center">
+          <p className="text-[11px] font-medium text-gray-500 tracking-[0.2em] uppercase opacity-50">
+            Made with ❤️ by <span className="text-red-500/80">MFarhan</span>
+          </p>
+        </div>
       </div>
     </div>
   );
