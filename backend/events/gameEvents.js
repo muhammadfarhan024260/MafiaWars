@@ -97,8 +97,8 @@ module.exports = function registerGameEvents(io, rooms) {
         return;
       }
 
-      room.configuration.mafiaCount = mafiaCount;
-      room.configuration.doctorCount = doctorCount;
+      room.configuration.mafiaCount = Number(mafiaCount);
+      room.configuration.doctorCount = Number(doctorCount);
 
       const civilianCount = totalPlayers - mafiaCount - doctorCount;
       io.to(roomCode).emit('configurationUpdated', {

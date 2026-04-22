@@ -43,13 +43,15 @@ function shuffleArray(array) {
  * Assign roles to players
  */
 function assignRoles(players, mafiaCount, doctorCount) {
+  const mCount = Number(mafiaCount);
+  const dCount = Number(doctorCount);
   const totalPlayers = players.length;
-  const civilianCount = Math.max(0, totalPlayers - mafiaCount - doctorCount);
+  const civilianCount = Math.max(0, totalPlayers - mCount - dCount);
 
   // Create role array
   const roles = [
-    ...Array(mafiaCount).fill('MAFIA'),
-    ...Array(doctorCount).fill('DOCTOR'),
+    ...Array(mCount).fill('MAFIA'),
+    ...Array(dCount).fill('DOCTOR'),
     ...Array(civilianCount).fill('CIVILIAN')
   ];
 
