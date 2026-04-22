@@ -1,0 +1,8 @@
+const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+export const API_CONFIG = {
+  BACKEND_URL: NEXT_PUBLIC_BACKEND_URL,
+  SOCKET_URL: NEXT_PUBLIC_BACKEND_URL
+};
+
+export default API_CONFIG;
