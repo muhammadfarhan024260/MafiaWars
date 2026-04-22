@@ -188,6 +188,7 @@ export function GameProvider({ children }) {
         ...prev,
         gameStarted: false,
         myRole: null,
+        players: prev.players.map(p => ({ ...p, role: null, eliminated: false, shielded: false })),
         showRoleReveal: false,
         showRoleRevelation: false
       }));

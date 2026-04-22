@@ -152,6 +152,17 @@ module.exports = function registerGameEvents(io, rooms) {
         stats: getGameStats(room.players)
       });
 
+      // Force broadcast the new roles to the Host's Live Roster
+      const playerList = room.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        isHost: p.id === room.hostId,
+        role: p.role,
+        eliminated: p.eliminated,
+        shielded: p.shielded
+      }));
+      io.to(roomCode).emit('playerListUpdate', playerList);
+
       console.log(`Game started in room ${roomCode}`);
     });
 
@@ -281,6 +292,17 @@ module.exports = function registerGameEvents(io, rooms) {
       io.to(roomCode).emit('gameReset', {
         totalPlayers: room.players.length
       });
+
+      // Force broadcast the cleared roles to the Host's Live Roster
+      const playerList = room.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        isHost: p.id === room.hostId,
+        role: null,
+        eliminated: false,
+        shielded: false
+      }));
+      io.to(roomCode).emit('playerListUpdate', playerList);
     });
 
     /**
