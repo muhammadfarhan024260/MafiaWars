@@ -17,7 +17,7 @@ export default function RoleReveal({ role, onRevealComplete }) {
       setDisplayedRole(null);
       setIsRevealing(false);
       if (onRevealComplete) onRevealComplete();
-    }, 1500);
+    }, 3000);
 
     return () => clearTimeout(timer);
   };
@@ -43,8 +43,8 @@ export default function RoleReveal({ role, onRevealComplete }) {
                 onClick={handleReveal}
                 disabled={isRevealing}
                 className={`w-28 h-28 rounded-full transition-all duration-500 shadow-2xl flex items-center justify-center group relative overflow-hidden ${displayedRole
-                    ? 'bg-white shadow-white/20 scale-100'
-                    : 'bg-red-600 hover:bg-red-500 active:scale-95 shadow-red-600/40'
+                  ? 'bg-white shadow-white/20 scale-100'
+                  : 'bg-red-600 hover:bg-red-500 active:scale-95 shadow-red-600/40'
                   }`}
               >
                 {/* Reveal Content */}
