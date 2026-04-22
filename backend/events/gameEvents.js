@@ -152,8 +152,8 @@ module.exports = function registerGameEvents(io, rooms) {
         stats: getGameStats(room.players)
       });
 
-      // Force broadcast the new roles to the Host's Live Roster
-      const playerList = room.players.map(p => ({
+      // SECURITY: Send full list ONLY to the Host
+      const fullPlayerList = room.players.map(p => ({
         id: p.id,
         name: p.name,
         isHost: p.id === room.hostId,
@@ -161,7 +161,18 @@ module.exports = function registerGameEvents(io, rooms) {
         eliminated: p.eliminated,
         shielded: p.shielded
       }));
-      io.to(roomCode).emit('playerListUpdate', playerList);
+      io.to(room.hostId).emit('playerListUpdate', fullPlayerList);
+
+      // SECURITY: Send anonymized list (no roles) to everyone else
+      const anonymizedList = room.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        isHost: p.id === room.hostId,
+        role: null,
+        eliminated: p.eliminated,
+        shielded: p.shielded
+      }));
+      socket.to(roomCode).emit('playerListUpdate', anonymizedList);
 
       console.log(`Game started in room ${roomCode}`);
     });
@@ -293,8 +304,8 @@ module.exports = function registerGameEvents(io, rooms) {
         totalPlayers: room.players.length
       });
 
-      // Force broadcast the cleared roles to the Host's Live Roster
-      const playerList = room.players.map(p => ({
+      // Clear roles for everyone on reset
+      const clearedList = room.players.map(p => ({
         id: p.id,
         name: p.name,
         isHost: p.id === room.hostId,
@@ -302,7 +313,7 @@ module.exports = function registerGameEvents(io, rooms) {
         eliminated: false,
         shielded: false
       }));
-      io.to(roomCode).emit('playerListUpdate', playerList);
+      io.to(roomCode).emit('playerListUpdate', clearedList);
     });
 
     /**

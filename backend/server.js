@@ -24,9 +24,17 @@ const rooms = new Map();
 const registerGameEvents = require('./events/gameEvents');
 registerGameEvents(io, rooms);
 
-// Health check endpoint
+// Health check and versioning
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ 
+    status: 'ok', 
+    version: '1.0.1', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+app.get('/api/version', (req, res) => {
+  res.json({ version: '1.0.1-shuffling-fix-v2' });
 });
 
 // Get room info (for debugging)
