@@ -96,6 +96,10 @@ export default function Home() {
         onEliminate={eliminatePlayer}
         onShield={shieldPlayer}
         onKick={kickPlayer}
+        onLeave={leaveRoom}
+        pendingHostSwitch={gameState.pendingHostSwitch}
+        onAcceptSwitch={acceptHostSwitch}
+        onDeclineSwitch={declineHostSwitch}
       />
     );
   }
@@ -107,6 +111,8 @@ export default function Home() {
         isHost={gameState.isHost}
         onRevealAll={revealAll}
         onReset={resetGame}
+        onLeave={leaveRoom}
+        onRequestHost={requestHostSwitch}
       />
     );
   }

@@ -11,7 +11,8 @@ const ROLE = {
 export default function HostDashboard({
   roomCode, players, configuration,
   onUpdateConfig, onStartGame, isGameStarted,
-  onRevealAll, onReset, onEliminate, onShield, onKick,
+  onRevealAll, onReset, onEliminate, onShield, onKick, onLeave,
+  pendingHostSwitch, onAcceptSwitch, onDeclineSwitch,
 }) {
   const [mafiaCount,  setMafiaCount]  = useState(configuration?.mafiaCount  ?? 1);
   const [doctorCount, setDoctorCount] = useState(configuration?.doctorCount ?? 0);
@@ -47,6 +48,40 @@ export default function HostDashboard({
     <div className="min-h-[100dvh] flex flex-col p-4 sm:p-6 overflow-x-hidden animate-reveal">
       <div className="max-w-2xl mx-auto w-full space-y-6">
 
+        {/* ── Host Switch Banner ── */}
+        {pendingHostSwitch && (
+          <div className="glass-card p-4 border-[#4A6FFF]/30 bg-[#4A6FFF]/10 flex items-center justify-between animate-role-pop">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#4A6FFF]/20 flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A6FFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Transfer Request</p>
+                <p className="text-xs text-white">
+                  <span className="font-bold text-[#4A6FFF]">{pendingHostSwitch.name}</span> wants to be the Narrator
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => onAcceptSwitch(pendingHostSwitch.userId)}
+                className="px-3 py-1.5 rounded-lg bg-[#4A6FFF] text-white text-[9px] font-bold uppercase tracking-widest hover:bg-[#4A6FFF]/80 transition-all"
+              >
+                Approve
+              </button>
+              <button 
+                onClick={onDeclineSwitch}
+                className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-[9px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+              >
+                Deny
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-4">
           <div className="space-y-1">
@@ -61,6 +96,12 @@ export default function HostDashboard({
               <p className="text-[9px] uppercase tracking-widest text-white/20 font-bold mb-1">Alive</p>
               <p className="font-bebas text-3xl leading-none text-white">{alive}<span className="text-white/10 text-xl">/{total}</span></p>
             </div>
+            <button 
+              onClick={onLeave}
+              className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white/30 border border-white/5 hover:bg-white/5 hover:text-white transition-all"
+            >
+              Leave
+            </button>
           </div>
         </div>
 

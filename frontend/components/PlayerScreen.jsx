@@ -2,7 +2,9 @@
 
 import React from 'react';
 
-export default function PlayerScreen({ players }) {
+export default function PlayerScreen({ players, onLeave, onRequestHost }) {
+  const [showRequestConfirm, setShowRequestConfirm] = React.useState(false);
+
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 animate-reveal relative">
       {/* Ambient glow */}
@@ -59,7 +61,60 @@ export default function PlayerScreen({ players }) {
             </div>
           </div>
         )}
+
+        <div className="pt-4">
+          <button 
+            onClick={onLeave}
+            className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white/30 border border-white/5 hover:bg-white/5 hover:text-white transition-all"
+          >
+            Leave Game
+          </button>
+          <button 
+            onClick={() => setShowRequestConfirm(true)}
+            className="block mx-auto mt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-[#4A6FFF]/40 hover:text-[#4A6FFF] transition-colors"
+          >
+            Request to be Narrator
+          </button>
+        </div>
       </div>
+
+      {/* ── Request Confirmation Modal ── */}
+      {showRequestConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in shadow-2xl">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRequestConfirm(false)} />
+          <div className="relative glass-card w-full max-w-xs p-6 space-y-6 text-center border-white/5 animate-role-pop">
+            <div className="space-y-2">
+              <div className="w-12 h-12 rounded-full bg-[#4A6FFF]/10 border border-[#4A6FFF]/20 flex items-center justify-center mx-auto mb-4">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A6FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <h3 className="font-bebas text-3xl tracking-widest text-white">NARRATOR TRANSFER</h3>
+              <p className="text-white/50 text-xs leading-relaxed">
+                Are you sure you want to request control as the <span className="text-[#4A6FFF] font-bold">Narrator</span>?
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  onRequestHost();
+                  setShowRequestConfirm(false);
+                }}
+                className="w-full py-3 bg-[#4A6FFF] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-[0_0_20px_rgba(74,111,255,0.3)]"
+              >
+                Send Request
+              </button>
+              <button
+                onClick={() => setShowRequestConfirm(false)}
+                className="w-full py-3 text-[10px] uppercase tracking-widest font-bold text-white/30 hover:text-white/60 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

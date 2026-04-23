@@ -16,6 +16,7 @@ const INITIAL_STATE = {
   myRole:            null,
   showRoleReveal:    false,
   showRoleRevelation:false,
+  pendingHostSwitch: null, // { userId, name }
   error:             null,
 };
 
@@ -75,6 +76,30 @@ export function GameProvider({ children }) {
   const revealAll    = useCallback(() => socket?.emit('revealAll',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
   const resetGame    = useCallback(() => socket?.emit('resetGame',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
   const kickPlayer   = useCallback((playerId) => socket?.emit('kickPlayer',   { roomCode: gameState.roomCode, playerId }), [socket, gameState.roomCode]);
+  const leaveRoom    = useCallback(() => {
+    if (socket && gameState.roomCode) {
+      socket.emit('leaveRoom', { roomCode: gameState.roomCode, userId });
+      clearSession();
+      setGameState(INITIAL_STATE);
+    }
+  }, [socket, gameState.roomCode, userId]);
+
+  const requestHostSwitch = useCallback(() => {
+    if (socket && gameState.roomCode) {
+      socket.emit('requestHostSwitch', { roomCode: gameState.roomCode, userId });
+    }
+  }, [socket, gameState.roomCode, userId]);
+
+  const acceptHostSwitch = useCallback((targetUserId) => {
+    if (socket && gameState.roomCode) {
+      socket.emit('acceptHostSwitch', { roomCode: gameState.roomCode, targetUserId });
+      setGameState(prev => ({ ...prev, pendingHostSwitch: null }));
+    }
+  }, [socket, gameState.roomCode]);
+
+  const declineHostSwitch = useCallback(() => {
+    setGameState(prev => ({ ...prev, pendingHostSwitch: null }));
+  }, []);
 
   // ── Socket listeners ─────────────────────────────────────────────────────
 
@@ -108,6 +133,7 @@ export function GameProvider({ children }) {
 
       // ── Normal game events ─────────────────────────────────────────────
       playerListUpdate: (players) => setGameState(prev => ({ ...prev, players })),
+      hostSwitchRequest: (data) => setGameState(prev => ({ ...prev, pendingHostSwitch: data })),
 
       configurationUpdated: (config) => setGameState(prev => ({
         ...prev,
@@ -169,7 +195,8 @@ export function GameProvider({ children }) {
       createRoom, joinRoom, updateConfiguration,
       startGame, revealRole,
       eliminatePlayer, shieldPlayer,
-      revealAll, resetGame, kickPlayer
+      revealAll, resetGame, kickPlayer, leaveRoom,
+      requestHostSwitch, acceptHostSwitch, declineHostSwitch
     }}>
       {children}
     </GameContext.Provider>

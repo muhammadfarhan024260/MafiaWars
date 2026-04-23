@@ -51,38 +51,70 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       }
     });
 
+    // ── Leave Room / Disconnect Logic ──────────────────────────────────────
+    const handleUserLeave = (roomCode, socketId, userId, isExplicit = false) => {
+      const room = rooms.get(roomCode);
+      if (!room) return;
+
+      const isHost = room.hostUserId === userId;
+
+      if (isHost) {
+        if (isExplicit) {
+          // Host explicitly left. Migrate immediately if possible.
+          if (room.players.length > 0) {
+            const nextInLine = room.players.shift();
+            room.hostId = nextInLine.socketId;
+            room.hostUserId = nextInLine.userId;
+            room.hostName = nextInLine.name;
+            console.log(`Host migrated in ${roomCode}: New Host is ${room.hostName}`);
+            
+            io.to(roomCode).emit('error', { message: `Narrator left. ${room.hostName} is now the host.` });
+            io.to(room.hostId).emit('sessionRestored', { roomCode, isHost: true, players: playerListForHost(room) });
+            io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+          } else {
+            rooms.delete(roomCode);
+          }
+        } else {
+          // Host disconnected (accidental). Start grace period timer.
+          const key = `host:${userId}`;
+          clearTimeout(gracePeriodTimers.get(key));
+          gracePeriodTimers.set(key, setTimeout(() => {
+            gracePeriodTimers.delete(key);
+            handleUserLeave(roomCode, socketId, userId, true);
+          }, 30 * 60 * 1000));
+        }
+      } else {
+        // Player left
+        const pIndex = room.players.findIndex(p => p.userId === userId);
+        if (pIndex !== -1) {
+          if (isExplicit) {
+            room.players.splice(pIndex, 1);
+            io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+          } else {
+            const key = `player:${userId}`;
+            clearTimeout(gracePeriodTimers.get(key));
+            gracePeriodTimers.set(key, setTimeout(() => {
+              gracePeriodTimers.delete(key);
+              handleUserLeave(roomCode, socketId, userId, true);
+            }, 30 * 60 * 1000));
+          }
+        }
+      }
+    };
+
+    socket.on('leaveRoom', ({ roomCode, userId }) => {
+      handleUserLeave(roomCode, socket.id, userId, true);
+      socket.leave(roomCode);
+    });
+
     socket.on('disconnect', () => {
       console.log('Disconnected:', socket.id);
-
       rooms.forEach((room, roomCode) => {
-        // Player disconnect
-        const player = room.players.find(p => p.socketId === socket.id);
-        if (player) {
-          const key = `player:${player.userId}`;
-          clearTimeout(gracePeriodTimers.get(key));
-
-          gracePeriodTimers.set(key, setTimeout(() => {
-            gracePeriodTimers.delete(key);
-            const idx = room.players.findIndex(p => p.userId === player.userId);
-            if (idx !== -1) {
-              room.players.splice(idx, 1);
-              io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
-            }
-          }, 30 * 60 * 1000)); // 30 minute grace period
-        }
-
-        // Host disconnect
         if (room.hostId === socket.id) {
-          const key = `host:${room.hostUserId}`;
-          clearTimeout(gracePeriodTimers.get(key));
-
-          gracePeriodTimers.set(key, setTimeout(() => {
-            gracePeriodTimers.delete(key);
-            if (room.hostId === socket.id) { // still the old socket → never reconnected
-              rooms.delete(roomCode);
-              io.to(roomCode).emit('roomClosed', { reason: 'Host disconnected' });
-            }
-          }, 30 * 60 * 1000)); // 30 minute grace period
+          handleUserLeave(roomCode, socket.id, room.hostUserId, false);
+        } else {
+          const p = room.players.find(p => p.socketId === socket.id);
+          if (p) handleUserLeave(roomCode, socket.id, p.userId, false);
         }
       });
     });
@@ -285,6 +317,63 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
 
       io.to(roomCode).emit('gameReset', { totalPlayers: room.players.length });
       io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+    });
+
+    // ── Host Switch Logic ───────────────────────────────────────────────────
+    socket.on('requestHostSwitch', ({ roomCode, userId }) => {
+      const room = rooms.get(roomCode);
+      if (!room) return;
+      const player = room.players.find(p => p.userId === userId);
+      if (!player) return;
+
+      // Notify the host about the request
+      io.to(room.hostId).emit('hostSwitchRequest', { 
+        playerId: player.id, 
+        userId: player.userId, 
+        name: player.name 
+      });
+    });
+
+    socket.on('acceptHostSwitch', ({ roomCode, targetUserId }) => {
+      const room = rooms.get(roomCode);
+      if (!room || room.hostId !== socket.id) return;
+
+      const pIdx = room.players.findIndex(p => p.userId === targetUserId);
+      if (pIdx === -1) return;
+
+      const newHostPlayer = room.players[pIdx];
+
+      // Store current host details to turn them into a player
+      const oldHost = {
+        id:         uuidv4(),
+        userId:     room.hostUserId,
+        socketId:   room.hostId,
+        name:       room.hostName,
+        role:       null,
+        eliminated: false,
+        shielded:   false,
+      };
+
+      // Perform the swap
+      room.hostId = newHostPlayer.socketId;
+      room.hostUserId = newHostPlayer.userId;
+      room.hostName = newHostPlayer.name;
+
+      // Remove the new host from player list and add the old host
+      room.players.splice(pIdx, 1);
+      room.players.push(oldHost);
+
+      console.log(`Host Switched: ${room.hostName} is now host, ${oldHost.name} is now player.`);
+
+      // Notify everyone
+      io.to(roomCode).emit('error', { message: `Narrator role transferred to ${room.hostName}` });
+      
+      // Update everyone's local state
+      io.to(room.hostId).emit('roomState', { ...room, isHost: true });
+      io.to(oldHost.socketId).emit('roomState', { ...room, isHost: false });
+      
+      io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+      io.to(room.hostId).emit('playerListUpdate', playerListForHost(room));
     });
 
     // ── Get room state ──────────────────────────────────────────────────────
