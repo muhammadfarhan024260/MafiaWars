@@ -198,7 +198,7 @@ module.exports = function registerGameEvents(io, rooms) {
       // Only send to the player themselves
       socket.emit('roleReveal', {
         role: player.role,
-        duration: 3000 // 3 seconds in milliseconds
+        duration: 1500 // 1.5 seconds in milliseconds
       });
     });
 

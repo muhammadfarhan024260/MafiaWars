@@ -12,12 +12,12 @@ export default function RoleReveal({ role, onRevealComplete }) {
     setIsRevealing(true);
     setDisplayedRole(role);
 
-    // Auto-hide after 3 seconds
+    // Auto-hide after 1.5 seconds
     const timer = setTimeout(() => {
       setDisplayedRole(null);
       setIsRevealing(false);
       if (onRevealComplete) onRevealComplete();
-    }, 3000);
+    }, 1500);
 
     return () => clearTimeout(timer);
   };
