@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Crewmate from './Crewmate';
 
 export default function PlayerScreen({ players }) {
   return (
@@ -14,14 +13,14 @@ export default function PlayerScreen({ players }) {
 
       <div className="relative z-10 w-full max-w-sm text-center space-y-8">
 
-        {/* Bouncing crewmate */}
+        {/* Pulsing state indicator */}
         <div className="flex justify-center">
-          <Crewmate
-            color="#333"
-            size={90}
-            className="animate-crew-bounce"
-            style={{ filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.06))' }}
-          />
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-25" />
+            <div className="relative w-full h-full bg-white/5 border border-white/10 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-white/40 rounded-full animate-pulse" />
+            </div>
+          </div>
         </div>
 
         {/* Status text */}

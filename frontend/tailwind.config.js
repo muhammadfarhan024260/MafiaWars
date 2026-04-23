@@ -35,7 +35,6 @@ module.exports = {
       },
       animation: {
         'twinkle':      'twinkle 3s ease-in-out infinite',
-        'crew-bounce':  'crewBounce 2.5s ease-in-out infinite',
         'role-pop':     'rolePop 0.5s cubic-bezier(0.16,1,0.3,1) forwards',
         'slide-up':     'slideUp 0.4s ease forwards',
         'count-down':   'countDown 1.5s linear forwards',

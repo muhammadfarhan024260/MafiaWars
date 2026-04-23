@@ -48,7 +48,7 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
               room.players.splice(idx, 1);
               io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
             }
-          }, 60_000));
+          }, 30 * 60 * 1000)); // 30 minute grace period
         }
 
         // Host disconnect
@@ -62,7 +62,7 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
               rooms.delete(roomCode);
               io.to(roomCode).emit('roomClosed', { reason: 'Host disconnected' });
             }
-          }, 60_000));
+          }, 30 * 60 * 1000)); // 30 minute grace period
         }
       });
     });

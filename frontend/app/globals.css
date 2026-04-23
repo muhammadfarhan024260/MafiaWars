@@ -43,7 +43,7 @@
 
   .input-field {
     @apply w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-4 text-white
-           placeholder:text-white/20 focus:outline-none transition-all duration-200 font-sans;
+           placeholder:text-white/20 focus:outline-none font-sans;
   }
   .input-field:focus {
     border-color: rgba(127, 219, 255, 0.4);
@@ -61,11 +61,6 @@
 @keyframes twinkle {
   0%, 100% { opacity: 1;   transform: scale(1);   }
   50%       { opacity: 0.1; transform: scale(0.6); }
-}
-
-@keyframes crewBounce {
-  0%, 100% { transform: translateY(0px)   rotate(-2deg); }
-  50%       { transform: translateY(-13px) rotate(2deg);  }
 }
 
 @keyframes rolePop {

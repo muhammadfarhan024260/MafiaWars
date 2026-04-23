@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Crewmate from './Crewmate';
 
 const ROLE_CFG = {
   MAFIA:    { color: '#C51111', light: '#FF4444', bg: 'rgba(197,17,17,0.08)',  border: 'rgba(197,17,17,0.28)'  },
@@ -9,7 +8,7 @@ const ROLE_CFG = {
   CIVILIAN: { color: '#132ED2', light: '#4A6FFF', bg: 'rgba(74,111,255,0.08)', border: 'rgba(74,111,255,0.28)' },
 };
 
-export default function RoleRevelation({ players, onClose }) {
+export default function RoleRevelation({ players, onClose, isHost = false }) {
   return (
     <div className="min-h-[100dvh] p-4 sm:p-6 animate-reveal">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -42,16 +41,18 @@ export default function RoleRevelation({ players, onClose }) {
                   animationFillMode: 'both',
                 }}
               >
-                <Crewmate
-                  color={player.eliminated ? '#222' : cfg ? cfg.color : '#444'}
-                  size={54}
-                  className="mx-auto"
-                  style={
-                    cfg && !player.eliminated
-                      ? { filter: `drop-shadow(0 0 10px ${cfg.color}99)` }
-                      : {}
-                  }
-                />
+                {/* Character avatar replacement */}
+                <div 
+                  className="w-14 h-14 rounded-full mx-auto flex items-center justify-center font-bebas text-2xl border-2 transition-all duration-500"
+                  style={{ 
+                    background: player.eliminated ? 'rgba(0,0,0,0.4)' : cfg ? `${cfg.color}15` : 'rgba(255,255,255,0.05)',
+                    borderColor: player.eliminated ? 'rgba(255,255,255,0.1)' : cfg ? cfg.color : 'rgba(255,255,255,0.1)',
+                    color: player.eliminated ? 'rgba(255,255,255,0.1)' : cfg ? cfg.light : 'rgba(255,255,255,0.4)',
+                    boxShadow: !player.eliminated && cfg ? `0 0 20px ${cfg.color}44` : 'none',
+                  }}
+                >
+                  {player.role?.[0]?.toUpperCase() || '?'}
+                </div>
 
                 <div>
                   <p
@@ -83,7 +84,7 @@ export default function RoleRevelation({ players, onClose }) {
         {/* CTA */}
         <div className="pb-8 text-center">
           <button onClick={onClose} className="btn-primary min-w-[180px]">
-            Play Again
+            {isHost ? 'Reset & Play Again' : 'Back to Lobby'}
           </button>
         </div>
 

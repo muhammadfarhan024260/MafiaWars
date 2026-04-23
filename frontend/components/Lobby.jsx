@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Crewmate from './Crewmate';
 
 export default function Lobby({ onRoomCreated, onJoinRoom }) {
   const [activeTab, setActiveTab] = useState('create');
@@ -33,7 +32,7 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 animate-reveal relative">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative">
       {/* Ambient red glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[260px] rounded-full pointer-events-none"
@@ -41,19 +40,6 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
       />
 
       <div className="w-full max-w-sm space-y-7 relative z-10">
-
-        {/* ── Crewmate trio ── */}
-        <div className="flex justify-center items-end gap-5">
-          <div className="animate-crew-bounce" style={{ animationDelay: '0s' }}>
-            <Crewmate color="#C51111" size={42} style={{ filter: 'drop-shadow(0 0 10px rgba(197,17,17,0.6))' }} />
-          </div>
-          <div className="animate-crew-bounce" style={{ animationDelay: '0.9s', marginBottom: 6 }}>
-            <Crewmate color="#444" size={34} />
-          </div>
-          <div className="animate-crew-bounce" style={{ animationDelay: '1.8s' }}>
-            <Crewmate color="#4A6FFF" size={42} style={{ filter: 'drop-shadow(0 0 10px rgba(74,111,255,0.6))' }} />
-          </div>
-        </div>
 
         {/* ── Title ── */}
         <div className="text-center space-y-1">
@@ -123,7 +109,7 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
                   inputMode="numeric"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="0000"
+                  placeholder="- - - -"
                   maxLength={4}
                   className="input-field text-center font-bebas text-4xl tracking-[0.65em] placeholder:tracking-[0.65em]"
                   disabled={isLoading}

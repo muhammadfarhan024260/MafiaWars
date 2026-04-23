@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Crewmate from './Crewmate';
 
 const ROLE = {
   MAFIA:    { hex: '#C51111', light: '#FF4444', bg: 'rgba(197,17,17,0.1)',  border: 'rgba(197,17,17,0.3)'  },
@@ -121,11 +120,17 @@ export default function HostDashboard({
                     >
                       {/* Name row */}
                       <div className="flex items-start gap-2">
-                        <Crewmate
-                          color={player.eliminated ? '#2a2a2a' : rc ? rc.hex : '#444'}
-                          size={26}
-                          className="flex-shrink-0 mt-0.5"
-                        />
+                        {/* Simple initial-based avatar */}
+                        <div 
+                          className="w-7 h-7 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center font-bebas text-sm border"
+                          style={{ 
+                            background: player.eliminated ? 'rgba(0,0,0,0.2)' : rc ? `${rc.hex}22` : 'rgba(255,255,255,0.05)',
+                            borderColor: player.eliminated ? 'rgba(255,255,255,0.05)' : rc ? rc.border : 'rgba(255,255,255,0.1)',
+                            color: player.eliminated ? 'rgba(255,255,255,0.1)' : rc ? rc.light : 'rgba(255,255,255,0.4)',
+                          }}
+                        >
+                          {player.name?.[0]?.toUpperCase() || 'P'}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-bold truncate leading-tight ${player.eliminated ? 'line-through text-white/25' : 'text-white'}`}>
                             {player.name}

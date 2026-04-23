@@ -70,8 +70,13 @@ export default function Home() {
     return (
       <RoleRevelation
         players={gameState.players}
+        isHost={gameState.isHost}
         onClose={() => {
-          setViewState('player');
+          if (gameState.isHost) {
+            resetGame();
+          } else {
+            setViewState('player');
+          }
         }}
       />
     );

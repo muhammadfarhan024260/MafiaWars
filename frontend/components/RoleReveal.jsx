@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Crewmate from './Crewmate';
 
 const ROLE_CFG = {
   MAFIA: {
@@ -106,13 +105,19 @@ export default function RoleReveal({ role, onRevealComplete }) {
         ) : (
           /* ── Revealed state ── */
           <>
-            {/* Crewmate */}
+            {/* Role Icon Replacement */}
             <div className="animate-role-pop flex justify-center">
-              <Crewmate
-                color={cfg.color}
-                size={110}
-                style={{ filter: `drop-shadow(0 0 24px ${cfg.glow})` }}
-              />
+              <div 
+                className="w-28 h-28 rounded-full flex items-center justify-center font-bebas text-6xl border-4 transition-all duration-500"
+                style={{ 
+                  background: `${cfg.color}15`,
+                  borderColor: cfg.color,
+                  color: cfg.light,
+                  boxShadow: `0 0 40px ${cfg.glow}, inset 0 0 20px ${cfg.glow}`,
+                }}
+              >
+                {cfg.label?.[0]?.toUpperCase()}
+              </div>
             </div>
 
             {/* Role name */}
