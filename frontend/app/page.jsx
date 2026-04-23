@@ -95,6 +95,7 @@ export default function Home() {
         onReset={resetGame}
         onEliminate={eliminatePlayer}
         onShield={shieldPlayer}
+        onKick={kickPlayer}
       />
     );
   }

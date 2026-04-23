@@ -74,6 +74,7 @@ export function GameProvider({ children }) {
   const shieldPlayer    = useCallback((playerId) => socket?.emit('shieldPlayer',    { roomCode: gameState.roomCode, playerId }), [socket, gameState.roomCode]);
   const revealAll    = useCallback(() => socket?.emit('revealAll',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
   const resetGame    = useCallback(() => socket?.emit('resetGame',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
+  const kickPlayer   = useCallback((playerId) => socket?.emit('kickPlayer',   { roomCode: gameState.roomCode, playerId }), [socket, gameState.roomCode]);
 
   // ── Socket listeners ─────────────────────────────────────────────────────
 
@@ -168,7 +169,7 @@ export function GameProvider({ children }) {
       createRoom, joinRoom, updateConfiguration,
       startGame, revealRole,
       eliminatePlayer, shieldPlayer,
-      revealAll, resetGame,
+      revealAll, resetGame, kickPlayer
     }}>
       {children}
     </GameContext.Provider>

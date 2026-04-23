@@ -32,7 +32,7 @@ export default function Lobby({ onRoomCreated, onJoinRoom }) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative">
+    <div className="min-h-[100dvh] max-h-[100dvh] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Ambient red glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[260px] rounded-full pointer-events-none"

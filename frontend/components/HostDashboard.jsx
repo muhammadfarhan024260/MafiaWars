@@ -11,10 +11,11 @@ const ROLE = {
 export default function HostDashboard({
   roomCode, players, configuration,
   onUpdateConfig, onStartGame, isGameStarted,
-  onRevealAll, onReset, onEliminate, onShield,
+  onRevealAll, onReset, onEliminate, onShield, onKick,
 }) {
   const [mafiaCount,  setMafiaCount]  = useState(configuration?.mafiaCount  ?? 1);
   const [doctorCount, setDoctorCount] = useState(configuration?.doctorCount ?? 0);
+  const [kickConfirm, setKickConfirm] = useState(null); // { id, name }
 
   useEffect(() => {
     setMafiaCount(configuration?.mafiaCount   ?? 1);
@@ -119,10 +120,10 @@ export default function HostDashboard({
                       }}
                     >
                       {/* Name row */}
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-center gap-2">
                         {/* Simple initial-based avatar */}
                         <div 
-                          className="w-7 h-7 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center font-bebas text-sm border"
+                          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-bebas text-sm border"
                           style={{ 
                             background: player.eliminated ? 'rgba(0,0,0,0.2)' : rc ? `${rc.hex}22` : 'rgba(255,255,255,0.05)',
                             borderColor: player.eliminated ? 'rgba(255,255,255,0.05)' : rc ? rc.border : 'rgba(255,255,255,0.1)',
@@ -144,6 +145,13 @@ export default function HostDashboard({
                             </p>
                           )}
                         </div>
+                        {/* Remove button */}
+                        <button
+                          onClick={() => setKickConfirm({ id: player.id, name: player.name })}
+                          className="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-[#FF4444] hover:bg-[#FF4444]/10 transition-all border border-transparent hover:border-[#FF4444]/30"
+                        >
+                          Kick
+                        </button>
                       </div>
 
                       {/* Shield badge */}
@@ -153,30 +161,6 @@ export default function HostDashboard({
                           style={{ color: '#19C119', borderColor: 'rgba(25,193,25,0.25)', background: 'rgba(25,193,25,0.08)' }}
                         >
                           Shielded
-                        </div>
-                      )}
-
-                      {/* Action buttons */}
-                      {isGameStarted && !player.eliminated && (
-                        <div className="flex gap-1 mt-2">
-                          {onEliminate && (
-                            <button
-                              onClick={() => onEliminate(player.id)}
-                              className="flex-1 text-[8px] uppercase tracking-wider font-bold py-1 rounded-lg transition-colors border"
-                              style={{ color: '#FF4444', borderColor: 'rgba(197,17,17,0.25)', background: 'rgba(197,17,17,0.08)' }}
-                            >
-                              Killed
-                            </button>
-                          )}
-                          {onShield && (
-                            <button
-                              onClick={() => onShield(player.id)}
-                              className="flex-1 text-[8px] uppercase tracking-wider font-bold py-1 rounded-lg transition-colors border"
-                              style={{ color: '#19C119', borderColor: 'rgba(25,193,25,0.25)', background: 'rgba(25,193,25,0.08)' }}
-                            >
-                              Shield
-                            </button>
-                          )}
                         </div>
                       )}
                     </div>
@@ -238,7 +222,45 @@ export default function HostDashboard({
             </div>
           </div>
 
-        </div>
+        {/* ── Kick Confirmation Modal ── */}
+        {kickConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in shadow-2xl">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setKickConfirm(null)} />
+            <div className="relative glass-card w-full max-w-xs p-6 space-y-6 text-center border-white/5 animate-role-pop">
+              <div className="space-y-2">
+                <div className="w-12 h-12 rounded-full bg-impostor/10 border border-impostor/20 flex items-center justify-center mx-auto mb-4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="18" y1="8" x2="23" y2="13"></line>
+                    <line x1="23" y1="8" x2="18" y2="13"></line>
+                  </svg>
+                </div>
+                <h3 className="font-bebas text-3xl tracking-widest text-white">REMOVING PLAYER</h3>
+                <p className="text-white/50 text-xs leading-relaxed">
+                  Are you sure you want to remove <span className="text-white font-bold">{kickConfirm.name}</span> from the game?
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    onKick && onKick(kickConfirm.id);
+                    setKickConfirm(null);
+                  }}
+                  className="w-full btn-primary py-3 text-xs"
+                >
+                  Confirm Kick
+                </button>
+                <button
+                  onClick={() => setKickConfirm(null)}
+                  className="w-full py-3 text-[10px] uppercase tracking-widest font-bold text-white/30 hover:text-white/60 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

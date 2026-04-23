@@ -31,6 +31,26 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
     console.log('Connected:', socket.id);
 
     // ── Disconnect with grace period ────────────────────────────────────────
+    socket.on('kickPlayer', (data) => {
+      const { roomCode, playerId } = data;
+      const room = rooms.get(roomCode);
+      if (!room || room.hostId !== socket.id) return;
+
+      const playerIndex = room.players.findIndex(p => p.id === playerId);
+      if (playerIndex !== -1) {
+        const player = room.players[playerIndex];
+        // Notify the player they've been kicked
+        io.to(player.id).emit('roomClosed', { message: 'You have been removed from the room' });
+        
+        // Remove from list
+        room.players.splice(playerIndex, 1);
+        room.updatedAt = new Date();
+        
+        // Broadcast updated list
+        io.to(roomCode).emit('playerListUpdate', room.players);
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log('Disconnected:', socket.id);
 
