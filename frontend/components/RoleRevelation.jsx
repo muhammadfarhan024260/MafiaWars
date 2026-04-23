@@ -1,67 +1,93 @@
 'use client';
 
 import React from 'react';
+import Crewmate from './Crewmate';
+
+const ROLE_CFG = {
+  MAFIA:    { color: '#C51111', light: '#FF4444', bg: 'rgba(197,17,17,0.08)',  border: 'rgba(197,17,17,0.28)'  },
+  DOCTOR:   { color: '#11802D', light: '#19C119', bg: 'rgba(25,193,25,0.08)',  border: 'rgba(25,193,25,0.28)'  },
+  CIVILIAN: { color: '#132ED2', light: '#4A6FFF', bg: 'rgba(74,111,255,0.08)', border: 'rgba(74,111,255,0.28)' },
+};
 
 export default function RoleRevelation({ players, onClose }) {
   return (
-    <div className="min-h-[100dvh] p-6 sm:p-8 animate-reveal">
-      <div className="max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl sm:text-6xl font-bebas text-white tracking-widest leading-none">
-            FINAL <span className="text-red-600">REVELATION</span>
+    <div className="min-h-[100dvh] p-4 sm:p-6 animate-reveal">
+      <div className="max-w-2xl mx-auto space-y-6">
+
+        {/* Header */}
+        <div className="text-center pt-4 space-y-1">
+          <h1
+            className="font-bebas text-5xl sm:text-6xl text-white tracking-widest leading-none"
+            style={{ textShadow: '0 0 40px rgba(255,255,255,0.18)' }}
+          >
+            GAME OVER
           </h1>
-          <p className="text-gray-500 text-xs uppercase tracking-[0.3em] font-medium">
-            Operation concluded. All identities decrypted.
+          <p className="text-white/25 text-[10px] uppercase tracking-[0.35em]">
+            All identities revealed
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {players.map((player) => (
-            <div
-              key={player.id}
-              className={`glass-card p-8 border-white/5 transition-all duration-500 ${
-                player.role === 'MAFIA' 
-                  ? 'bg-red-600/10 border-red-600/30' 
-                  : player.role === 'DOCTOR'
-                  ? 'bg-teal-600/10 border-teal-600/30'
-                  : 'bg-white/5'
-              }`}
-            >
-              <div className="space-y-4 text-center">
-                <div className="space-y-1">
-                  <p className="text-white font-bold text-xl tracking-tight">{player.name}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">Agent ID: {player.id.slice(0, 8)}</p>
+        {/* Player cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {players.map((player, i) => {
+            const cfg = player.role ? ROLE_CFG[player.role] : null;
+            return (
+              <div
+                key={player.id}
+                className="rounded-2xl p-4 border text-center space-y-3 animate-slide-up"
+                style={{
+                  background:   cfg ? cfg.bg   : 'rgba(255,255,255,0.025)',
+                  borderColor:  cfg ? cfg.border : 'rgba(255,255,255,0.07)',
+                  animationDelay: `${i * 0.07}s`,
+                  animationFillMode: 'both',
+                }}
+              >
+                <Crewmate
+                  color={player.eliminated ? '#222' : cfg ? cfg.color : '#444'}
+                  size={54}
+                  className="mx-auto"
+                  style={
+                    cfg && !player.eliminated
+                      ? { filter: `drop-shadow(0 0 10px ${cfg.color}99)` }
+                      : {}
+                  }
+                />
+
+                <div>
+                  <p
+                    className={`font-bold text-sm leading-tight ${player.eliminated ? 'text-white/25 line-through' : 'text-white'}`}
+                  >
+                    {player.name}
+                  </p>
+                  <p
+                    className="font-bebas text-xl tracking-widest mt-0.5"
+                    style={{ color: cfg && !player.eliminated ? cfg.light : '#2a2a2a' }}
+                  >
+                    {player.role || '???'}
+                  </p>
                 </div>
-                
-                <h2 className={`text-4xl font-bebas tracking-widest ${
-                  player.role === 'MAFIA' ? 'text-red-500' : 
-                  player.role === 'DOCTOR' ? 'text-teal-400' : 'text-gray-400'
-                }`}>
-                  {player.role}
-                </h2>
 
                 {player.eliminated && (
-                  <div className="pt-4 mt-4 border-t border-white/5">
-                    <span className="text-[10px] bg-red-600/20 text-red-500 font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                      Killed in Action
-                    </span>
-                  </div>
+                  <span
+                    className="inline-block text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border"
+                    style={{ color: '#FF4444', borderColor: 'rgba(197,17,17,0.25)', background: 'rgba(197,17,17,0.08)' }}
+                  >
+                    Eliminated
+                  </span>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="pt-8 text-center">
-          <button
-            onClick={onClose}
-            className="btn-primary min-w-[200px]"
-          >
-            Return to Base
+        {/* CTA */}
+        <div className="pb-8 text-center">
+          <button onClick={onClose} className="btn-primary min-w-[180px]">
+            Play Again
           </button>
         </div>
+
       </div>
     </div>
   );
 }
-

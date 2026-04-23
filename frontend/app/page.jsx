@@ -88,6 +88,8 @@ export default function Home() {
         isGameStarted={gameState.gameStarted}
         onRevealAll={revealAll}
         onReset={resetGame}
+        onEliminate={eliminatePlayer}
+        onShield={shieldPlayer}
       />
     );
   }

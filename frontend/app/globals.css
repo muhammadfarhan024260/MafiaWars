@@ -3,12 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 2%;
-    --foreground: 0 0% 100%;
-    --accent: 0 84% 50%;
-  }
-
   * {
     margin: 0;
     padding: 0;
@@ -16,57 +10,95 @@
   }
 
   body {
-    background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000000 80%), #000;
+    background-color: #0A0A18;
+    background-image:
+      radial-gradient(ellipse at 15% 0%,   rgba(197, 17,  17,  0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 100%, rgba(19,  46,  210, 0.07) 0%, transparent 55%);
     color: white;
     min-height: 100dvh;
     overflow-x: hidden;
-    @apply font-sans;
+    font-family: var(--font-outfit), system-ui, sans-serif;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl;
   }
 
   .btn-primary {
-    @apply bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-lg shadow-red-600/20 uppercase tracking-widest;
+    @apply active:scale-95 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 uppercase tracking-widest font-sans;
+    background-color: #C51111;
+    box-shadow: 0 0 24px rgba(197, 17, 17, 0.35), 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+  .btn-primary:hover {
+    background-color: #e01313;
+    box-shadow: 0 0 40px rgba(197, 17, 17, 0.55), 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+  .btn-primary:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
   }
 
   .input-field {
-    @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-red-600/50 focus:bg-white/10;
+    @apply w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-4 text-white
+           placeholder:text-white/20 focus:outline-none transition-all duration-200 font-sans;
   }
-
-  .text-bebas {
-    @apply font-bebas tracking-wider uppercase;
+  .input-field:focus {
+    border-color: rgba(127, 219, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 1px rgba(127, 219, 255, 0.15), 0 0 20px rgba(127, 219, 255, 0.06);
   }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* ── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 4px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: rgba(255,255,255,0.08); border-radius: 10px; }
+
+/* ── Keyframes ─────────────────────────────────────────────────── */
+@keyframes twinkle {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%       { opacity: 0.1; transform: scale(0.6); }
 }
 
-::-webkit-scrollbar-track {
-  background: #000;
+@keyframes crewBounce {
+  0%, 100% { transform: translateY(0px)   rotate(-2deg); }
+  50%       { transform: translateY(-13px) rotate(2deg);  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: #222;
-  border-radius: 10px;
+@keyframes rolePop {
+  0%   { opacity: 0; transform: scale(0.45) translateY(30px); }
+  70%  {             transform: scale(1.07) translateY(-4px);  }
+  100% { opacity: 1; transform: scale(1)    translateY(0);     }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #333;
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
-/* Animations */
-@keyframes fade-in-scale {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+@keyframes countDown {
+  from { width: 100%; }
+  to   { width: 0%;   }
 }
 
-.animate-reveal {
-  animation: fade-in-scale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@keyframes reveal {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1);    }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { filter: brightness(1);   }
+  50%       { filter: brightness(1.4); }
+}
+
+.animate-reveal    { animation: reveal  0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-fade-in   { animation: fadeIn  0.5s ease forwards; }
+.animate-slide-up  { animation: slideUp 0.4s ease forwards; }

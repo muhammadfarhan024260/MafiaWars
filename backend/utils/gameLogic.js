@@ -1,35 +1,24 @@
 const { v4: uuidv4 } = require('uuid');
 
-/**
- * Generate a random 4-digit room code
- */
 function generateRoomCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
-/**
- * Initialize a new game room
- */
-function createRoom(hostSocketId, hostName) {
+function createRoom(hostSocketId, hostName, hostUserId) {
   const roomCode = generateRoomCode();
   return {
     code: roomCode,
-    hostId: hostSocketId,
+    hostId:     hostSocketId,
+    hostUserId: hostUserId || hostSocketId,
     hostName,
-    players: [], // Players array starts empty, host is not a player
+    players: [],
     gameStarted: false,
-    configuration: {
-      mafiaCount: 1,
-      doctorCount: 0
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
+    configuration: { mafiaCount: 1, doctorCount: 0 },
+    createdAt:  new Date(),
+    updatedAt:  new Date(),
   };
 }
 
-/**
- * Shuffle array using Fisher-Yates algorithm
- */
 function shuffleArray(array) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -39,58 +28,34 @@ function shuffleArray(array) {
   return shuffled;
 }
 
-/**
- * Assign roles to players
- */
 function assignRoles(players, mafiaCount, doctorCount) {
   const mCount = Number(mafiaCount);
   const dCount = Number(doctorCount);
-  const totalPlayers = players.length;
-  const civilianCount = Math.max(0, totalPlayers - mCount - dCount);
-
-  // Create role array
+  const civilianCount = Math.max(0, players.length - mCount - dCount);
   const roles = [
     ...Array(mCount).fill('MAFIA'),
     ...Array(dCount).fill('DOCTOR'),
-    ...Array(civilianCount).fill('CIVILIAN')
+    ...Array(civilianCount).fill('CIVILIAN'),
   ];
-
-  // Shuffle roles
   const shuffledRoles = shuffleArray(roles);
-
-  // Assign roles to players
   const playersCopy = [...players];
-  playersCopy.forEach((player, index) => {
-    player.role = shuffledRoles[index];
+  playersCopy.forEach((player, i) => {
+    player.role      = shuffledRoles[i];
     player.eliminated = false;
-    player.shielded = false;
+    player.shielded   = false;
   });
-
   return playersCopy;
 }
 
-/**
- * Get game statistics
- */
 function getGameStats(players) {
-  const alive = players.filter(p => !p.eliminated);
-  const mafia = alive.filter(p => p.role === 'MAFIA');
-  const doctors = alive.filter(p => p.role === 'DOCTOR');
-  const civilians = alive.filter(p => p.role === 'CIVILIAN');
-
+  const alive     = players.filter(p => !p.eliminated);
   return {
-    totalAlive: alive.length,
-    mafiaAlive: mafia.length,
-    doctorsAlive: doctors.length,
-    civiliansAlive: civilians.length,
-    totalEliminated: players.filter(p => p.eliminated).length
+    totalAlive:       alive.length,
+    mafiaAlive:       alive.filter(p => p.role === 'MAFIA').length,
+    doctorsAlive:     alive.filter(p => p.role === 'DOCTOR').length,
+    civiliansAlive:   alive.filter(p => p.role === 'CIVILIAN').length,
+    totalEliminated:  players.filter(p => p.eliminated).length,
   };
 }
 
-module.exports = {
-  generateRoomCode,
-  createRoom,
-  shuffleArray,
-  assignRoles,
-  getGameStats
-};
+module.exports = { generateRoomCode, createRoom, shuffleArray, assignRoles, getGameStats };

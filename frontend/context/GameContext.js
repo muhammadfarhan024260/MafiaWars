@@ -2,236 +2,166 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useSocket } from './SocketContext';
+import { saveSession, clearSession } from '@/lib/session';
 
 const GameContext = createContext(null);
 
+const INITIAL_STATE = {
+  roomCode:          null,
+  playerId:          null,
+  isHost:            false,
+  players:           [],
+  configuration:     { mafiaCount: 1, doctorCount: 0 },
+  gameStarted:       false,
+  myRole:            null,
+  showRoleReveal:    false,
+  showRoleRevelation:false,
+  error:             null,
+};
+
 export function GameProvider({ children }) {
-  const { socket } = useSocket();
-  const [gameState, setGameState] = useState({
-    roomCode: null,
-    playerId: null,
-    isHost: false,
-    players: [],
-    configuration: { mafiaCount: 1, doctorCount: 0 },
-    gameStarted: false,
-    myRole: null,
-    showRoleReveal: false,
-    showRoleRevelation: false,
-    error: null
-  });
+  const { socket, userId } = useSocket();
+  const [gameState, setGameState] = useState(INITIAL_STATE);
 
-  // Create room
-  const createRoom = useCallback((hostName) => {
-    return new Promise((resolve, reject) => {
-      if (!socket) {
-        reject(new Error('Socket not connected'));
-        return;
-      }
+  // ── Actions ─────────────────────────────────────────────────────────────
 
-      const timeout = setTimeout(() => {
-        reject(new Error('Room creation timeout'));
-      }, 5000);
+  const createRoom = useCallback((hostName) => new Promise((resolve, reject) => {
+    if (!socket) return reject(new Error('Socket not connected'));
+    const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
 
-      socket.once('roomCreated', (data) => {
-        clearTimeout(timeout);
-        setGameState(prev => ({
-          ...prev,
-          roomCode: data.roomCode,
-          isHost: data.isHost
-        }));
-        resolve(data);
-      });
-
-      socket.once('error', (err) => {
-        clearTimeout(timeout);
-        setGameState(prev => ({ ...prev, error: err.message }));
-        reject(err);
-      });
-
-      socket.emit('createRoom', { hostName });
+    socket.once('roomCreated', (data) => {
+      clearTimeout(timeout);
+      setGameState(prev => ({ ...prev, roomCode: data.roomCode, isHost: true }));
+      saveSession({ roomCode: data.roomCode, playerId: null, isHost: true });
+      resolve(data);
     });
-  }, [socket]);
-
-  // Join room
-  const joinRoom = useCallback((roomCode, playerName) => {
-    return new Promise((resolve, reject) => {
-      if (!socket) {
-        reject(new Error('Socket not connected'));
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Room join timeout'));
-      }, 5000);
-
-      socket.once('roomJoined', (data) => {
-        clearTimeout(timeout);
-        setGameState(prev => ({
-          ...prev,
-          roomCode: data.roomCode,
-          playerId: data.playerId,
-          isHost: data.isHost
-        }));
-        resolve(data);
-      });
-
-      socket.once('error', (err) => {
-        clearTimeout(timeout);
-        setGameState(prev => ({ ...prev, error: err.message }));
-        reject(err);
-      });
-
-      socket.emit('joinRoom', { roomCode, playerName });
+    socket.once('error', (err) => {
+      clearTimeout(timeout);
+      setGameState(prev => ({ ...prev, error: err.message }));
+      reject(err);
     });
-  }, [socket]);
 
-  // Update configuration
+    socket.emit('createRoom', { hostName, userId });
+  }), [socket, userId]);
+
+  const joinRoom = useCallback((roomCode, playerName) => new Promise((resolve, reject) => {
+    if (!socket) return reject(new Error('Socket not connected'));
+    const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+
+    socket.once('roomJoined', (data) => {
+      clearTimeout(timeout);
+      setGameState(prev => ({ ...prev, roomCode: data.roomCode, playerId: data.playerId, isHost: false }));
+      saveSession({ roomCode: data.roomCode, playerId: data.playerId, isHost: false });
+      resolve(data);
+    });
+    socket.once('error', (err) => {
+      clearTimeout(timeout);
+      setGameState(prev => ({ ...prev, error: err.message }));
+      reject(err);
+    });
+
+    socket.emit('joinRoom', { roomCode, playerName, userId });
+  }), [socket, userId]);
+
   const updateConfiguration = useCallback((mafiaCount, doctorCount) => {
     if (!socket) return;
-    socket.emit('updateConfiguration', {
-      roomCode: gameState.roomCode,
-      mafiaCount,
-      doctorCount
-    });
+    socket.emit('updateConfiguration', { roomCode: gameState.roomCode, mafiaCount, doctorCount });
   }, [socket, gameState.roomCode]);
 
-  // Start game
-  const startGame = useCallback(() => {
-    if (!socket) return;
-    socket.emit('startGame', { roomCode: gameState.roomCode });
-  }, [socket, gameState.roomCode]);
+  const startGame    = useCallback(() => socket?.emit('startGame',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
+  const revealRole   = useCallback(() => socket?.emit('revealRole',   { roomCode: gameState.roomCode, playerId: gameState.playerId }), [socket, gameState.roomCode, gameState.playerId]);
+  const eliminatePlayer = useCallback((playerId) => socket?.emit('eliminatePlayer', { roomCode: gameState.roomCode, playerId }), [socket, gameState.roomCode]);
+  const shieldPlayer    = useCallback((playerId) => socket?.emit('shieldPlayer',    { roomCode: gameState.roomCode, playerId }), [socket, gameState.roomCode]);
+  const revealAll    = useCallback(() => socket?.emit('revealAll',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
+  const resetGame    = useCallback(() => socket?.emit('resetGame',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
 
-  // Reveal role
-  const revealRole = useCallback(() => {
-    if (!socket) return;
-    socket.emit('revealRole', {
-      roomCode: gameState.roomCode,
-      playerId: gameState.playerId
-    });
-  }, [socket, gameState.roomCode, gameState.playerId]);
+  // ── Socket listeners ─────────────────────────────────────────────────────
 
-  // Eliminate player
-  const eliminatePlayer = useCallback((playerId) => {
-    if (!socket) return;
-    socket.emit('eliminatePlayer', {
-      roomCode: gameState.roomCode,
-      playerId
-    });
-  }, [socket, gameState.roomCode]);
-
-  // Shield player
-  const shieldPlayer = useCallback((playerId) => {
-    if (!socket) return;
-    socket.emit('shieldPlayer', {
-      roomCode: gameState.roomCode,
-      playerId
-    });
-  }, [socket, gameState.roomCode]);
-
-  // Reveal all
-  const revealAll = useCallback(() => {
-    if (!socket) return;
-    socket.emit('revealAll', { roomCode: gameState.roomCode });
-  }, [socket, gameState.roomCode]);
-
-  // Reset game
-  const resetGame = useCallback(() => {
-    if (!socket) return;
-    socket.emit('resetGame', { roomCode: gameState.roomCode });
-  }, [socket, gameState.roomCode]);
-
-  // Set up socket listeners
   React.useEffect(() => {
     if (!socket) return;
 
-    socket.on('playerListUpdate', (players) => {
-      setGameState(prev => ({ ...prev, players }));
-    });
+    const handlers = {
 
-    socket.on('configurationUpdated', (config) => {
-      setGameState(prev => ({
+      // ── Reconnection ──────────────────────────────────────────────────
+      sessionRestored: (data) => {
+        setGameState(prev => ({
+          ...prev,
+          roomCode:       data.roomCode,
+          playerId:       data.playerId   ?? prev.playerId,
+          isHost:         data.isHost,
+          players:        data.players    ?? prev.players,
+          gameStarted:    data.gameStarted,
+          myRole:         data.myRole     ?? prev.myRole,
+          showRoleReveal: data.gameStarted && !data.isHost,
+          configuration:  data.configuration ?? prev.configuration,
+          error:          null,
+        }));
+        saveSession({ roomCode: data.roomCode, playerId: data.playerId, isHost: data.isHost });
+      },
+
+      sessionExpired: () => {
+        clearSession();
+        setGameState(INITIAL_STATE);
+      },
+
+      // ── Normal game events ─────────────────────────────────────────────
+      playerListUpdate: (players) => setGameState(prev => ({ ...prev, players })),
+
+      configurationUpdated: (config) => setGameState(prev => ({
         ...prev,
-        configuration: {
-          mafiaCount: config.mafiaCount,
-          doctorCount: config.doctorCount
-        }
-      }));
-    });
+        configuration: { mafiaCount: config.mafiaCount, doctorCount: config.doctorCount },
+      })),
 
-    socket.on('gameStarted', () => {
-      setGameState(prev => ({ ...prev, gameStarted: true, showRoleReveal: true }));
-    });
+      gameStarted: () => setGameState(prev => ({ ...prev, gameStarted: true, showRoleReveal: true })),
 
-    socket.on('roleDealt', (data) => {
-      setGameState(prev => ({ ...prev, myRole: data.role }));
-    });
+      roleDealt: (data) => setGameState(prev => ({ ...prev, myRole: data.role })),
 
-    socket.on('roleReveal', (data) => {
-      setGameState(prev => ({ ...prev, myRole: data.role, showRoleReveal: true }));
-    });
+      roleReveal: (data) => setGameState(prev => ({ ...prev, myRole: data.role, showRoleReveal: true })),
 
-    socket.on('playerEliminated', () => {
-      // Refresh room state
-      socket.emit('getRoomState', { roomCode: gameState.roomCode });
-    });
+      playerEliminated: () => socket.emit('getRoomState', { roomCode: gameState.roomCode }),
 
-    socket.on('allRolesRevealed', (data) => {
-      setGameState(prev => ({
+      allRolesRevealed: (data) => setGameState(prev => ({
         ...prev,
         showRoleRevelation: true,
-        players: data.players
-      }));
-    });
+        players: data.players,
+      })),
 
-    socket.on('gameReset', () => {
-      setGameState(prev => ({
-        ...prev,
-        gameStarted: false,
-        myRole: null,
-        players: prev.players.map(p => ({ ...p, role: null, eliminated: false, shielded: false })),
-        showRoleReveal: false,
-        showRoleRevelation: false
-      }));
-    });
+      gameReset: () => {
+        clearSession();
+        setGameState(prev => ({
+          ...prev,
+          gameStarted:        false,
+          myRole:             null,
+          players:            prev.players.map(p => ({ ...p, role: null, eliminated: false, shielded: false })),
+          showRoleReveal:     false,
+          showRoleRevelation: false,
+        }));
+      },
 
-    socket.on('roomState', (state) => {
-      setGameState(prev => ({
-        ...prev,
-        ...state,
-        roomCode: state.roomCode
-      }));
-    });
+      roomState: (state) => setGameState(prev => ({ ...prev, ...state, roomCode: state.roomCode })),
 
-    socket.on('error', (err) => {
-      setGameState(prev => ({ ...prev, error: err.message }));
-    });
+      roomClosed: () => {
+        clearSession();
+        setGameState(INITIAL_STATE);
+      },
 
-    return () => {
-      socket.off('playerListUpdate');
-      socket.off('configurationUpdated');
-      socket.off('gameStarted');
-      socket.off('roleDealt');
-      socket.off('roleReveal');
-      socket.off('playerEliminated');
-      socket.off('allRolesRevealed');
-      socket.off('gameReset');
-      socket.off('roomState');
-      socket.off('error');
+      error: (err) => setGameState(prev => ({ ...prev, error: err.message })),
     };
+
+    Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
+    return () => Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn));
+
+  // gameState.roomCode needed for playerEliminated handler
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, gameState.roomCode]);
 
   return (
     <GameContext.Provider value={{
       gameState,
-      createRoom,
-      joinRoom,
-      updateConfiguration,
-      startGame,
-      revealRole,
-      eliminatePlayer,
-      shieldPlayer,
-      revealAll,
-      resetGame
+      createRoom, joinRoom, updateConfiguration,
+      startGame, revealRole,
+      eliminatePlayer, shieldPlayer,
+      revealAll, resetGame,
     }}>
       {children}
     </GameContext.Provider>
@@ -239,9 +169,7 @@ export function GameProvider({ children }) {
 }
 
 export function useGame() {
-  const context = useContext(GameContext);
-  if (!context) {
-    throw new Error('useGame must be used within GameProvider');
-  }
-  return context;
+  const ctx = useContext(GameContext);
+  if (!ctx) throw new Error('useGame must be used within GameProvider');
+  return ctx;
 }

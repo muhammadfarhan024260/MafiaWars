@@ -1,347 +1,287 @@
 const { v4: uuidv4 } = require('uuid');
 const { createRoom, assignRoles, getGameStats } = require('../utils/gameLogic');
 
-module.exports = function registerGameEvents(io, rooms) {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function playerListForHost(room) {
+  return room.players.map(p => ({
+    id: p.id, name: p.name,
+    isHost: false,
+    role: p.role,
+    eliminated: p.eliminated,
+    shielded: p.shielded,
+  }));
+}
+
+function playerListForAll(room) {
+  return room.players.map(p => ({
+    id: p.id, name: p.name,
+    isHost: false,
+    role: null,
+    eliminated: p.eliminated,
+    shielded: p.shielded,
+  }));
+}
+
+// ── Registration ─────────────────────────────────────────────────────────────
+
+module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
+
   io.on('connection', (socket) => {
-    /**
-     * Create a new room
-     */
-    socket.on('createRoom', (data) => {
-      const { hostName } = data;
-      
-      if (!hostName || hostName.trim().length === 0) {
-        socket.emit('error', { message: 'Host name is required' });
+    console.log('Connected:', socket.id);
+
+    // ── Disconnect with grace period ────────────────────────────────────────
+    socket.on('disconnect', () => {
+      console.log('Disconnected:', socket.id);
+
+      rooms.forEach((room, roomCode) => {
+        // Player disconnect
+        const player = room.players.find(p => p.socketId === socket.id);
+        if (player) {
+          const key = `player:${player.userId}`;
+          clearTimeout(gracePeriodTimers.get(key));
+
+          gracePeriodTimers.set(key, setTimeout(() => {
+            gracePeriodTimers.delete(key);
+            const idx = room.players.findIndex(p => p.userId === player.userId);
+            if (idx !== -1) {
+              room.players.splice(idx, 1);
+              io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+            }
+          }, 60_000));
+        }
+
+        // Host disconnect
+        if (room.hostId === socket.id) {
+          const key = `host:${room.hostUserId}`;
+          clearTimeout(gracePeriodTimers.get(key));
+
+          gracePeriodTimers.set(key, setTimeout(() => {
+            gracePeriodTimers.delete(key);
+            if (room.hostId === socket.id) { // still the old socket → never reconnected
+              rooms.delete(roomCode);
+              io.to(roomCode).emit('roomClosed', { reason: 'Host disconnected' });
+            }
+          }, 60_000));
+        }
+      });
+    });
+
+    // ── Rejoin session after reconnect / refresh ────────────────────────────
+    socket.on('rejoinSession', ({ userId, roomCode }) => {
+      const room = rooms.get(roomCode);
+      if (!room) {
+        socket.emit('sessionExpired', { reason: 'Room no longer exists' });
         return;
       }
 
-      const room = createRoom(socket.id, hostName);
-      
+      // Cancel grace period timers for this userId
+      const playerKey = `player:${userId}`;
+      const hostKey   = `host:${userId}`;
+      clearTimeout(gracePeriodTimers.get(playerKey)); gracePeriodTimers.delete(playerKey);
+      clearTimeout(gracePeriodTimers.get(hostKey));   gracePeriodTimers.delete(hostKey);
+
+      // Host reconnecting
+      if (room.hostUserId === userId) {
+        room.hostId = socket.id;
+        socket.join(roomCode);
+
+        socket.emit('sessionRestored', {
+          roomCode,
+          isHost:        true,
+          gameStarted:   room.gameStarted,
+          players:       playerListForHost(room),
+          configuration: room.configuration,
+        });
+        console.log(`Host restored: room ${roomCode}`);
+        return;
+      }
+
+      // Player reconnecting
+      const player = room.players.find(p => p.userId === userId);
+      if (player) {
+        player.socketId = socket.id;
+        socket.join(roomCode);
+
+        socket.emit('sessionRestored', {
+          roomCode,
+          playerId:      player.id,
+          isHost:        false,
+          gameStarted:   room.gameStarted,
+          myRole:        player.role,
+          players:       playerListForAll(room),
+          configuration: room.configuration,
+        });
+        console.log(`Player restored: ${player.name} in room ${roomCode}`);
+        return;
+      }
+
+      socket.emit('sessionExpired', { reason: 'Session not found' });
+    });
+
+    // ── Create room ─────────────────────────────────────────────────────────
+    socket.on('createRoom', ({ hostName, userId }) => {
+      if (!hostName?.trim()) {
+        socket.emit('error', { message: 'Host name is required' });
+        return;
+      }
+      const room = createRoom(socket.id, hostName, userId);
       rooms.set(room.code, room);
       socket.join(room.code);
-
-      socket.emit('roomCreated', {
-        roomCode: room.code,
-        isHost: true
-      });
-
+      socket.emit('roomCreated', { roomCode: room.code, isHost: true });
       console.log(`Room created: ${room.code} by ${hostName}`);
     });
 
-    /**
-     * Join an existing room
-     */
-    socket.on('joinRoom', (data) => {
-      const { roomCode, playerName } = data;
-
+    // ── Join room ───────────────────────────────────────────────────────────
+    socket.on('joinRoom', ({ roomCode, playerName, userId }) => {
       if (!roomCode || !playerName) {
         socket.emit('error', { message: 'Room code and player name required' });
         return;
       }
-
       const room = rooms.get(roomCode);
-      if (!room) {
-        socket.emit('error', { message: 'Room not found' });
-        return;
-      }
-
-      if (room.gameStarted) {
-        socket.emit('error', { message: 'Game already started' });
-        return;
-      }
+      if (!room)            { socket.emit('error', { message: 'Room not found' });      return; }
+      if (room.gameStarted) { socket.emit('error', { message: 'Game already started' }); return; }
 
       const newPlayer = {
-        id: uuidv4(),
-        socketId: socket.id,
-        name: playerName,
-        role: null,
+        id:         uuidv4(),
+        userId:     userId || uuidv4(),
+        socketId:   socket.id,
+        name:       playerName,
+        role:       null,
         eliminated: false,
-        shielded: false
+        shielded:   false,
       };
 
       room.players.push(newPlayer);
       room.updatedAt = new Date();
       socket.join(roomCode);
 
-      socket.emit('roomJoined', {
-        roomCode,
-        playerId: newPlayer.id,
-        isHost: false
-      });
-
-      // Notify all players in room of player list update
-      const playerList = room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        isHost: p.id === room.hostId
-      }));
-
-      io.to(roomCode).emit('playerListUpdate', playerList);
+      socket.emit('roomJoined', { roomCode, playerId: newPlayer.id, isHost: false });
+      io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
       console.log(`${playerName} joined room ${roomCode}`);
     });
 
-    /**
-     * Update room configuration (host only)
-     */
-    socket.on('updateConfiguration', (data) => {
-      const { roomCode, mafiaCount, doctorCount } = data;
-
+    // ── Update configuration (host only) ────────────────────────────────────
+    socket.on('updateConfiguration', ({ roomCode, mafiaCount, doctorCount }) => {
       const room = rooms.get(roomCode);
-      if (!room || room.hostId !== socket.id) {
-        socket.emit('error', { message: 'Unauthorized' });
-        return;
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
+
+      const total = room.players.length;
+      if (mafiaCount + doctorCount > total) {
+        socket.emit('error', { message: 'Role count exceeds player count' }); return;
       }
 
-      const totalPlayers = room.players.length;
-      if (mafiaCount + doctorCount > totalPlayers) {
-        socket.emit('error', { message: 'Role count exceeds player count' });
-        return;
-      }
-
-      room.configuration.mafiaCount = Number(mafiaCount);
+      room.configuration.mafiaCount  = Number(mafiaCount);
       room.configuration.doctorCount = Number(doctorCount);
 
-      const civilianCount = totalPlayers - mafiaCount - doctorCount;
       io.to(roomCode).emit('configurationUpdated', {
-        mafiaCount,
-        doctorCount,
-        civilianCount,
-        totalPlayers
+        mafiaCount, doctorCount,
+        civilianCount: total - mafiaCount - doctorCount,
+        totalPlayers: total,
       });
     });
 
-    /**
-     * Start game and deal roles
-     */
-    socket.on('startGame', (data) => {
-      const { roomCode } = data;
-
+    // ── Start game (host only) ──────────────────────────────────────────────
+    socket.on('startGame', ({ roomCode }) => {
       const room = rooms.get(roomCode);
-      if (!room || room.hostId !== socket.id) {
-        socket.emit('error', { message: 'Unauthorized' });
-        return;
-      }
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
+      if (room.players.length < 2)            { socket.emit('error', { message: 'Need at least 2 players' }); return; }
 
-      if (room.players.length < 2) {
-        socket.emit('error', { message: 'Need at least 2 players to start' });
-        return;
-      }
-
-      // Assign roles
-      const updatedPlayers = assignRoles(
+      room.players = assignRoles(
         room.players,
         room.configuration.mafiaCount,
-        room.configuration.doctorCount
+        room.configuration.doctorCount,
       );
-
-      room.players = updatedPlayers;
       room.gameStarted = true;
 
-      // Send each player their role privately
+      // Send each player their role privately via their own socket
       room.players.forEach(player => {
-        const playerSocket = io.sockets.sockets.get(player.socketId);
-        if (playerSocket) {
-          playerSocket.emit('roleDealt', {
-            role: player.role,
-            playerId: player.id
-          });
-        }
+        const ps = io.sockets.sockets.get(player.socketId);
+        if (ps) ps.emit('roleDealt', { role: player.role, playerId: player.id });
       });
 
       io.to(roomCode).emit('gameStarted', {
         totalPlayers: room.players.length,
-        stats: getGameStats(room.players)
+        stats: getGameStats(room.players),
       });
 
-      // SECURITY: Send full list ONLY to the Host
-      const fullPlayerList = room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        isHost: p.id === room.hostId,
-        role: p.role,
-        eliminated: p.eliminated,
-        shielded: p.shielded
-      }));
-      io.to(room.hostId).emit('playerListUpdate', fullPlayerList);
-
-      // SECURITY: Send anonymized list (no roles) to everyone else
-      const anonymizedList = room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        isHost: p.id === room.hostId,
-        role: null,
-        eliminated: p.eliminated,
-        shielded: p.shielded
-      }));
-      socket.to(roomCode).emit('playerListUpdate', anonymizedList);
+      // Host sees full list with roles; everyone else sees anonymised list
+      io.to(room.hostId).emit('playerListUpdate', playerListForHost(room));
+      socket.to(roomCode).emit('playerListUpdate', playerListForAll(room));
 
       console.log(`Game started in room ${roomCode}`);
     });
 
-    /**
-     * Player reveals their role (shows for 3 seconds)
-     */
-    socket.on('revealRole', (data) => {
-      const { roomCode, playerId } = data;
-
+    // ── Reveal role (1.5 s private flash) ───────────────────────────────────
+    socket.on('revealRole', ({ roomCode, playerId }) => {
       const room = rooms.get(roomCode);
-      if (!room) {
-        socket.emit('error', { message: 'Room not found' });
-        return;
-      }
+      if (!room) { socket.emit('error', { message: 'Room not found' }); return; }
 
       const player = room.players.find(p => p.id === playerId);
-      if (!player) {
-        socket.emit('error', { message: 'Player not found' });
-        return;
-      }
+      if (!player) { socket.emit('error', { message: 'Player not found' }); return; }
 
-      // Only send to the player themselves
-      socket.emit('roleReveal', {
-        role: player.role,
-        duration: 1500 // 1.5 seconds in milliseconds
-      });
+      socket.emit('roleReveal', { role: player.role, duration: 1500 });
     });
 
-    /**
-     * Mark player as eliminated (host only)
-     */
-    socket.on('eliminatePlayer', (data) => {
-      const { roomCode, playerId } = data;
-
+    // ── Eliminate player (host only) ────────────────────────────────────────
+    socket.on('eliminatePlayer', ({ roomCode, playerId }) => {
       const room = rooms.get(roomCode);
-      if (!room || room.hostId !== socket.id) {
-        socket.emit('error', { message: 'Unauthorized' });
-        return;
-      }
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       const player = room.players.find(p => p.id === playerId);
-      if (!player) {
-        socket.emit('error', { message: 'Player not found' });
-        return;
-      }
+      if (!player) { socket.emit('error', { message: 'Player not found' }); return; }
 
       player.eliminated = true;
       room.updatedAt = new Date();
-
-      io.to(roomCode).emit('playerEliminated', {
-        playerId,
-        stats: getGameStats(room.players)
-      });
+      io.to(roomCode).emit('playerEliminated', { playerId, stats: getGameStats(room.players) });
     });
 
-    /**
-     * Shield a player (host only, for doctor saves)
-     */
-    socket.on('shieldPlayer', (data) => {
-      const { roomCode, playerId } = data;
-
+    // ── Shield player (host only) ───────────────────────────────────────────
+    socket.on('shieldPlayer', ({ roomCode, playerId }) => {
       const room = rooms.get(roomCode);
-      if (!room || room.hostId !== socket.id) {
-        socket.emit('error', { message: 'Unauthorized' });
-        return;
-      }
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       const player = room.players.find(p => p.id === playerId);
-      if (!player) {
-        socket.emit('error', { message: 'Player not found' });
-        return;
-      }
+      if (!player) { socket.emit('error', { message: 'Player not found' }); return; }
 
       player.shielded = true;
-      setTimeout(() => {
-        player.shielded = false;
-      }, 60000); // Shield lasts 1 minute (1 round)
-
-      io.to(roomCode).emit('playerShielded', {
-        playerId
-      });
+      setTimeout(() => { player.shielded = false; }, 60_000);
+      io.to(roomCode).emit('playerShielded', { playerId });
     });
 
-    /**
-     * Reveal all players' roles (end game)
-     */
-    socket.on('revealAll', (data) => {
-      const { roomCode } = data;
-
+    // ── Reveal all (host only) ──────────────────────────────────────────────
+    socket.on('revealAll', ({ roomCode }) => {
       const room = rooms.get(roomCode);
-      if (!room || room.hostId !== socket.id) {
-        socket.emit('error', { message: 'Unauthorized' });
-        return;
-      }
-
-      const revelation = room.players.map(player => ({
-        id: player.id,
-        name: player.name,
-        role: player.role,
-        eliminated: player.eliminated
-      }));
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       io.to(roomCode).emit('allRolesRevealed', {
-        players: revelation
+        players: room.players.map(p => ({ id: p.id, name: p.name, role: p.role, eliminated: p.eliminated })),
       });
     });
 
-    /**
-     * Reset game (host only)
-     */
-    socket.on('resetGame', (data) => {
-      const { roomCode } = data;
-
+    // ── Reset game (host only) ──────────────────────────────────────────────
+    socket.on('resetGame', ({ roomCode }) => {
       const room = rooms.get(roomCode);
-      if (!room || room.hostId !== socket.id) {
-        socket.emit('error', { message: 'Unauthorized' });
-        return;
-      }
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       room.gameStarted = false;
-      room.players.forEach(player => {
-        player.role = null;
-        player.eliminated = false;
-        player.shielded = false;
-      });
+      room.players.forEach(p => { p.role = null; p.eliminated = false; p.shielded = false; });
 
-      io.to(roomCode).emit('gameReset', {
-        totalPlayers: room.players.length
-      });
-
-      // Clear roles for everyone on reset
-      const clearedList = room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        isHost: p.id === room.hostId,
-        role: null,
-        eliminated: false,
-        shielded: false
-      }));
-      io.to(roomCode).emit('playerListUpdate', clearedList);
+      io.to(roomCode).emit('gameReset', { totalPlayers: room.players.length });
+      io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
     });
 
-    /**
-     * Get room state
-     */
-    socket.on('getRoomState', (data) => {
-      const { roomCode } = data;
-
+    // ── Get room state ──────────────────────────────────────────────────────
+    socket.on('getRoomState', ({ roomCode }) => {
       const room = rooms.get(roomCode);
-      if (!room) {
-        socket.emit('error', { message: 'Room not found' });
-        return;
-      }
-
-      const playerList = room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        isHost: p.id === room.hostId,
-        eliminated: p.eliminated,
-        shielded: p.shielded
-      }));
+      if (!room) { socket.emit('error', { message: 'Room not found' }); return; }
 
       socket.emit('roomState', {
-        roomCode: room.code,
-        gameStarted: room.gameStarted,
-        players: playerList,
+        roomCode:      room.code,
+        gameStarted:   room.gameStarted,
+        players:       playerListForAll(room),
         configuration: room.configuration,
-        stats: getGameStats(room.players)
+        stats:         getGameStats(room.players),
       });
     });
   });

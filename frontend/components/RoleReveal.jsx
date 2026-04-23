@@ -1,92 +1,145 @@
 'use client';
 
 import React, { useState } from 'react';
+import Crewmate from './Crewmate';
+
+const ROLE_CFG = {
+  MAFIA: {
+    color:  '#C51111',
+    light:  '#FF4444',
+    glow:   'rgba(197,17,17,0.65)',
+    bg:     'radial-gradient(ellipse at center, rgba(197,17,17,0.22) 0%, transparent 65%)',
+    label:  'MAFIA',
+    sub:    'Eliminate the crew. Stay hidden.',
+  },
+  DOCTOR: {
+    color:  '#11802D',
+    light:  '#19C119',
+    glow:   'rgba(25,193,25,0.65)',
+    bg:     'radial-gradient(ellipse at center, rgba(25,193,25,0.22) 0%, transparent 65%)',
+    label:  'DOCTOR',
+    sub:    'Protect the innocent. One per night.',
+  },
+  CIVILIAN: {
+    color:  '#132ED2',
+    light:  '#4A6FFF',
+    glow:   'rgba(74,111,255,0.65)',
+    bg:     'radial-gradient(ellipse at center, rgba(74,111,255,0.22) 0%, transparent 65%)',
+    label:  'CIVILIAN',
+    sub:    'Find the Mafia. Vote them out.',
+  },
+};
 
 export default function RoleReveal({ role, onRevealComplete }) {
-  const [isRevealing, setIsRevealing] = useState(false);
-  const [displayedRole, setDisplayedRole] = useState(null);
+  const [revealed, setRevealed] = useState(false);
 
   const handleReveal = () => {
-    if (isRevealing) return;
-
-    setIsRevealing(true);
-    setDisplayedRole(role);
-
-    // Auto-hide after 1.5 seconds
-    const timer = setTimeout(() => {
-      setDisplayedRole(null);
-      setIsRevealing(false);
+    if (revealed) return;
+    setRevealed(true);
+    setTimeout(() => {
+      setRevealed(false);
       if (onRevealComplete) onRevealComplete();
     }, 1500);
-
-    return () => clearTimeout(timer);
   };
 
+  const cfg = role ? ROLE_CFG[role] : null;
+
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center p-6 animate-reveal">
-      <div className="w-full max-w-md text-center">
-        <div className="space-y-12">
-          {/* Header area - changes based on state */}
-          <div className="space-y-4">
-            <h1 className="text-4xl sm:text-5xl font-bebas text-white tracking-widest uppercase">
-              {displayedRole ? 'IDENTITY' : 'IDENTITY'} <span className="text-red-600">{displayedRole ? 'DECRYPTED' : 'CHECK'}</span>
-            </h1>
-            <p className="text-gray-500 text-[10px] uppercase tracking-[0.3em] font-medium">
-              {displayedRole ? 'Memorize and conceal immediately' : 'Hold private. Secure your surroundings.'}
-            </p>
-          </div>
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative overflow-hidden animate-reveal">
 
-          {/* The Cinematic Token */}
-          <div className="flex flex-col items-center justify-center space-y-8">
-            <div className={`glass-card p-12 flex items-center justify-center border-dashed transition-all duration-700 ${displayedRole ? 'border-white/40 scale-110' : 'border-white/20'}`}>
-              <button
-                onClick={handleReveal}
-                disabled={isRevealing}
-                className={`w-28 h-28 rounded-full transition-all duration-500 shadow-2xl flex items-center justify-center group relative overflow-hidden ${displayedRole
-                  ? 'bg-white shadow-white/20 scale-100'
-                  : 'bg-red-600 hover:bg-red-500 active:scale-95 shadow-red-600/40'
-                  }`}
+      {/* Role glow overlay — animates in on reveal */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        style={{ background: cfg?.bg ?? 'none', opacity: revealed ? 1 : 0 }}
+      />
+
+      {/* Default dark vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%)',
+          opacity: revealed ? 0 : 1,
+          transition: 'opacity 0.5s',
+        }}
+      />
+
+      <div className="relative z-10 w-full max-w-xs text-center space-y-8">
+
+        {!revealed ? (
+          /* ── Pre-reveal state ── */
+          <>
+            <div className="space-y-1">
+              <h1 className="font-bebas text-4xl text-white/70 tracking-widest">YOUR ROLE</h1>
+              <p className="text-[10px] text-white/20 uppercase tracking-[0.35em]">
+                Keep your screen private
+              </p>
+            </div>
+
+            {/* Tap button */}
+            <button
+              onClick={handleReveal}
+              className="mx-auto block group relative"
+              aria-label="Reveal role"
+            >
+              <div
+                className="w-44 h-44 rounded-full flex items-center justify-center border border-white/8 transition-all duration-300 group-hover:border-white/15 group-active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.025)' }}
               >
-                {/* Reveal Content */}
-                <div className={`font-bebas text-5xl transition-all duration-500 ${displayedRole ? 'text-black scale-100' : 'text-white scale-0 opacity-0 translate-y-4'}`}>
-                  {displayedRole === 'MAFIA' ? 'M' : displayedRole === 'DOCTOR' ? 'D' : 'C'}
+                <div
+                  className="w-32 h-32 rounded-full flex items-center justify-center border border-white/8 animate-pulse"
+                  style={{ background: 'rgba(255,255,255,0.03)' }}
+                >
+                  <div
+                    className="w-20 h-20 rounded-full flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.05)' }}
+                  >
+                    <span className="font-bebas text-white/50 text-xl tracking-widest">TAP</span>
+                  </div>
                 </div>
-
-                {/* Initial Eye Content */}
-                <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${displayedRole ? 'scale-0 opacity-0 -translate-y-4' : 'scale-100'}`}>
-                  <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin hidden group-disabled:block"></div>
-                  <span className="text-white font-bebas text-2xl group-disabled:hidden tracking-wider">EYE</span>
-                </div>
-              </button>
-            </div>
-
-            {/* Role Name (scaled for mobile) */}
-            <div className={`transition-all duration-700 delay-100 ${displayedRole ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-              <h2 className="text-6xl sm:text-8xl font-bebas text-white tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                {displayedRole}
-              </h2>
-
-              <div className="mt-6 h-1 bg-white/10 w-32 mx-auto rounded-full overflow-hidden">
-                <div className="h-full bg-white w-full animate-[shrink_3s_linear_forwards]"></div>
               </div>
-            </div>
-          </div>
+            </button>
 
-          <div className="space-y-2">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest leading-loose">
-              {displayedRole ? 'Data purging in progress...' : 'Data expires in 3 seconds post-reveal'}
+            <p className="text-[9px] text-white/15 uppercase tracking-[0.4em]">
+              Visible for 1.5 seconds only
             </p>
-          </div>
-        </div>
-      </div>
+          </>
+        ) : (
+          /* ── Revealed state ── */
+          <>
+            {/* Crewmate */}
+            <div className="animate-role-pop flex justify-center">
+              <Crewmate
+                color={cfg.color}
+                size={110}
+                style={{ filter: `drop-shadow(0 0 24px ${cfg.glow})` }}
+              />
+            </div>
 
-      <style jsx>{`
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-      `}</style>
+            {/* Role name */}
+            <div className="animate-slide-up" style={{ animationDelay: '0.15s', animationFillMode: 'both' }}>
+              <h2
+                className="font-bebas leading-none"
+                style={{
+                  fontSize: 'clamp(3.5rem, 20vw, 6.5rem)',
+                  color: cfg.light,
+                  textShadow: `0 0 30px ${cfg.glow}, 0 0 70px ${cfg.glow}55`,
+                }}
+              >
+                {cfg.label}
+              </h2>
+              <p className="text-white/35 text-xs mt-2 tracking-wider">{cfg.sub}</p>
+            </div>
+
+            {/* Countdown bar */}
+            <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <div
+                className="h-full rounded-full animate-count-down"
+                style={{ background: cfg.light }}
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
-
