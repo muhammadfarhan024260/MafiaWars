@@ -186,8 +186,8 @@ export default function HostDashboard({
               {!isGameStarted ? (
                 <div className="p-5 space-y-6">
                   <div className="space-y-4">
-                    <CountControl label="Mafia" count={mafiaCount} onChange={handleMafia} color={ROLE.MAFIA.light} />
-                    <CountControl label="Doctor" count={doctorCount} onChange={handleDoctor} color={ROLE.DOCTOR.light} />
+                    <CountControl label="Mafia" count={mafiaCount} onChange={handleMafia} color="white" />
+                    <CountControl label="Doctor" count={doctorCount} onChange={handleDoctor} color="white" />
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
                       <span className="text-[10px] text-white/15 uppercase tracking-widest font-medium">Civilians (Auto)</span>
                       <span className="font-bebas text-xl text-white/30">{civCount}</span>
