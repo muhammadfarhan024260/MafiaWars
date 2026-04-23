@@ -29,98 +29,60 @@ export default function HostDashboard({
   const handleMafia = (n) => {
     const v = Math.min(Math.max(0, n), Math.max(0, total - doctorCount));
     setMafiaCount(v);
-    onUpdateConfig(v, doctorCount);
   };
   const handleDoctor = (n) => {
     const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount));
     setDoctorCount(v);
-    onUpdateConfig(mafiaCount, v);
   };
 
-  return (
-    <div className="min-h-[100dvh] p-4 sm:p-6 animate-reveal">
-      <div className="max-w-5xl mx-auto space-y-5">
+  const handleUpdate = () => onUpdateConfig(mafiaCount, doctorCount);
 
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-bebas text-3xl sm:text-4xl text-white tracking-widest leading-none">
-              MISSION <span className="text-impostor">CONTROL</span>
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-white/25 text-[10px] uppercase tracking-widest">Room</span>
-              <span className="font-bebas text-2xl text-white tracking-widest">{roomCode}</span>
-              {isGameStarted && (
-                <span
-                  className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full border"
-                  style={{ color: '#19C119', borderColor: 'rgba(25,193,25,0.25)', background: 'rgba(25,193,25,0.08)' }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-medic-light animate-pulse" />
-                  Live
-                </span>
-              )}
+  return (
+    <div className="min-h-[100dvh] flex flex-col p-4 sm:p-6 overflow-x-hidden animate-reveal">
+      <div className="max-w-2xl mx-auto w-full space-y-6">
+
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="font-bebas text-5xl sm:text-6xl text-white tracking-widest leading-none">DASHBOARD</h1>
+              <span className="px-3 py-1 rounded-full bg-impostor text-[10px] font-bold tracking-widest uppercase">Room: {roomCode}</span>
             </div>
+            <p className="text-white/20 text-[10px] uppercase font-bold tracking-[0.4em]">Narrator Control Center</p>
           </div>
-          <div
-            className="rounded-xl px-4 py-2.5 text-center min-w-[68px] border"
-            style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
-          >
-            <p className="font-bebas text-3xl text-white leading-none">{total}</p>
-            <p className="text-[9px] text-white/25 uppercase tracking-widest">Players</p>
+          <div className="flex items-center gap-6 border-l border-white/5 pl-6">
+            <div>
+              <p className="text-[9px] uppercase tracking-widest text-white/20 font-bold mb-1">Alive</p>
+              <p className="font-bebas text-3xl leading-none text-white">{alive}<span className="text-white/10 text-xl">/{total}</span></p>
+            </div>
           </div>
         </div>
 
-        {/* ── Stats bar (game live) ── */}
-        {isGameStarted && (
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: 'Alive',   value: alive,                                                                    color: '#fff'    },
-              { label: 'Mafia',   value: players.filter(p => !p.eliminated && p.role === 'MAFIA').length,    color: '#FF4444' },
-              { label: 'Doctor',  value: players.filter(p => !p.eliminated && p.role === 'DOCTOR').length,   color: '#19C119' },
-              { label: 'Civilian',value: players.filter(p => !p.eliminated && p.role === 'CIVILIAN').length, color: '#4A6FFF' },
-            ].map(s => (
-              <div
-                key={s.label}
-                className="rounded-xl p-2.5 text-center border"
-                style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}
-              >
-                <p className="font-bebas text-2xl leading-none" style={{ color: s.color }}>{s.value}</p>
-                <p className="text-[9px] text-white/25 uppercase tracking-widest mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-          {/* ── Player grid ── */}
-          <div className="lg:col-span-2 space-y-3">
-            <SectionHeader title="Crew Roster" />
-
-            {total === 0 ? (
-              <div
-                className="rounded-2xl p-10 text-center border border-dashed"
-                style={{ borderColor: 'rgba(255,255,255,0.07)' }}
-              >
-                <p className="text-white/20 text-[10px] uppercase tracking-widest animate-pulse">
-                  Waiting for players to join…
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {players.map((player) => {
+        {/* ── Main Grid ───────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left: Player Roster */}
+          <div className="lg:col-span-7 space-y-4">
+            <SectionHeader title="Active Players" />
+            
+            <div className="grid grid-cols-1 gap-2">
+              {players.length === 0 ? (
+                <div className="py-12 glass-card text-center border-dashed border-white/5">
+                  <p className="text-white/10 text-xs uppercase tracking-[0.3em] font-medium italic">Waiting for agents to join...</p>
+                </div>
+              ) : (
+                players.map((player) => {
                   const rc = player.role ? ROLE[player.role] : null;
                   return (
                     <div
                       key={player.id}
-                      className={`rounded-xl p-3 border transition-all duration-300 ${player.eliminated ? 'opacity-35' : ''}`}
+                      className="glass-card p-3 flex items-center justify-between group transition-all duration-300 hover:bg-white/[0.07]"
                       style={{
-                        background:   rc ? rc.bg   : 'rgba(255,255,255,0.025)',
-                        borderColor:  rc ? rc.border : 'rgba(255,255,255,0.07)',
+                        borderColor: rc && !player.eliminated ? `${rc.hex}33` : 'rgba(255,255,255,0.06)',
                       }}
                     >
                       {/* Name row */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-1">
                         {/* Simple initial-based avatar */}
                         <div 
                           className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-bebas text-sm border"
@@ -133,15 +95,12 @@ export default function HostDashboard({
                           {player.name?.[0]?.toUpperCase() || 'P'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-bold truncate leading-tight ${player.eliminated ? 'line-through text-white/25' : 'text-white'}`}>
+                          <p className={`font-bold text-sm leading-tight truncate ${player.eliminated ? 'text-white/20 line-through' : 'text-white'}`}>
                             {player.name}
                           </p>
-                          {isGameStarted && (
-                            <p
-                              className="font-bebas text-sm tracking-wider leading-tight mt-0.5"
-                              style={{ color: rc && !player.eliminated ? rc.light : '#3a3a3a' }}
-                            >
-                              {player.role || '???'}
+                          {player.eliminated && (
+                            <p className="text-[8px] text-[#FF4444] uppercase tracking-widest font-bold mt-0.5">
+                              Eliminated
                             </p>
                           )}
                         </div>
@@ -157,7 +116,7 @@ export default function HostDashboard({
                       {/* Shield badge */}
                       {player.shielded && (
                         <div
-                          className="mt-1.5 text-center text-[8px] font-bold uppercase tracking-widest rounded-lg py-0.5 border"
+                          className="ml-2 px-2 text-center text-[8px] font-bold uppercase tracking-widest rounded-lg py-0.5 border"
                           style={{ color: '#19C119', borderColor: 'rgba(25,193,25,0.25)', background: 'rgba(25,193,25,0.08)' }}
                         >
                           Shielded
@@ -165,28 +124,36 @@ export default function HostDashboard({
                       )}
                     </div>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
 
-          {/* ── Controls ── */}
-          <div className="space-y-3">
-            <SectionHeader title="Controls" />
+          {/* Right: Controls */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="glass-card overflow-hidden">
+              <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                <p className="text-[10px] uppercase tracking-[0.3em] font-black text-white/30">Game Settings</p>
+              </div>
 
-            <div
-              className="rounded-2xl border overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.08)' }}
-            >
               {!isGameStarted ? (
-                <div className="p-5 space-y-5">
+                <div className="p-5 space-y-6">
                   <div className="space-y-4">
-                    <CountControl label="Mafia"   count={mafiaCount}  onChange={handleMafia}  color="#FF4444" />
-                    <CountControl label="Doctor"  count={doctorCount} onChange={handleDoctor} color="#19C119" />
-                    <div className="flex justify-between items-center pt-3 border-t border-white/5">
-                      <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Civilians</span>
-                      <span className="font-bebas text-2xl text-crewmate-light">{civCount}</span>
+                    <CountControl label="Mafia" count={mafiaCount} onChange={handleMafia} color={ROLE.MAFIA.light} />
+                    <CountControl label="Doctor" count={doctorCount} onChange={handleDoctor} color={ROLE.DOCTOR.light} />
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                      <span className="text-[10px] text-white/15 uppercase tracking-widest font-medium">Civilians (Auto)</span>
+                      <span className="font-bebas text-xl text-white/30">{civCount}</span>
                     </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={handleUpdate}
+                      className="w-full py-2.5 rounded-xl text-[10px] uppercase tracking-widest font-bold text-white/40 border border-white/5 hover:bg-white/5 hover:text-white transition-all"
+                    >
+                      Update Configuration
+                    </button>
                   </div>
 
                   <button
@@ -221,6 +188,8 @@ export default function HostDashboard({
               )}
             </div>
           </div>
+
+        </div>
 
         {/* ── Kick Confirmation Modal ── */}
         {kickConfirm && (
@@ -261,6 +230,7 @@ export default function HostDashboard({
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
