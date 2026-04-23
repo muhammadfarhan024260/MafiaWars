@@ -14,6 +14,7 @@ function createRoom(hostSocketId, hostName, hostUserId) {
     players: [],
     gameStarted: false,
     configuration: { mafiaCount: 1, doctorCount: 0 },
+    mafiaWeights: {}, // Stores weights by userId
     createdAt:  new Date(),
     updatedAt:  new Date(),
   };
@@ -28,23 +29,76 @@ function shuffleArray(array) {
   return shuffled;
 }
 
-function assignRoles(players, mafiaCount, doctorCount) {
-  const mCount = Number(mafiaCount);
-  const dCount = Number(doctorCount);
-  const civilianCount = Math.max(0, players.length - mCount - dCount);
-  const roles = [
-    ...Array(mCount).fill('MAFIA'),
-    ...Array(dCount).fill('DOCTOR'),
-    ...Array(civilianCount).fill('CIVILIAN'),
-  ];
-  const shuffledRoles = shuffleArray(roles);
-  const playersCopy = [...players];
-  playersCopy.forEach((player, i) => {
-    player.role      = shuffledRoles[i];
-    player.eliminated = false;
-    player.shielded   = false;
+/**
+ * Weighted selection for Mafia roles
+ */
+function assignRoles(room) {
+  const { players, configuration, mafiaWeights } = room;
+  const mCount = Number(configuration.mafiaCount);
+  const dCount = Number(configuration.doctorCount);
+
+  // Initialize weights for new players
+  players.forEach(p => {
+    if (!mafiaWeights[p.userId]) mafiaWeights[p.userId] = 10;
   });
-  return playersCopy;
+
+  const availablePlayers = [...players];
+  const assignedMafia = [];
+
+  // 1. Pick Mafia using weights
+  for (let m = 0; m < mCount; m++) {
+    if (availablePlayers.length === 0) break;
+
+    let totalWeight = 0;
+    availablePlayers.forEach(p => { totalWeight += mafiaWeights[p.userId]; });
+
+    let random = Math.random() * totalWeight;
+    let sum = 0;
+    let pickedIndex = -1;
+
+    for (let i = 0; i < availablePlayers.length; i++) {
+      sum += mafiaWeights[availablePlayers[i].userId];
+      if (random <= sum) {
+        pickedIndex = i;
+        break;
+      }
+    }
+
+    if (pickedIndex === -1) pickedIndex = 0;
+    
+    const picked = availablePlayers.splice(pickedIndex, 1)[0];
+    picked.role = 'MAFIA';
+    assignedMafia.push(picked);
+    
+    // Reset weight for next time
+    mafiaWeights[picked.userId] = 1;
+  }
+
+  // 2. Assign Doctors (Purely random from remaining)
+  const remainingAfterMafia = shuffleArray(availablePlayers);
+  for (let d = 0; d < dCount; d++) {
+    if (remainingAfterMafia.length === 0) break;
+    const picked = remainingAfterMafia.shift();
+    picked.role = 'DOCTOR';
+  }
+
+  // 3. Everyone else is Civilian
+  remainingAfterMafia.forEach(p => {
+    p.role = 'CIVILIAN';
+  });
+
+  // 4. Update weights for non-mafia (Increase pity)
+  players.forEach(p => {
+    if (p.role !== 'MAFIA') {
+      mafiaWeights[p.userId] += 5;
+      // Cap weight at 50 to prevent huge outliers
+      if (mafiaWeights[p.userId] > 50) mafiaWeights[p.userId] = 50;
+    }
+    p.eliminated = false;
+    p.shielded = false;
+  });
+
+  return players;
 }
 
 function getGameStats(players) {

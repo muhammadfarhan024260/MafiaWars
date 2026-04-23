@@ -187,11 +187,7 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
       if (room.players.length < 2)            { socket.emit('error', { message: 'Need at least 2 players' }); return; }
 
-      room.players = assignRoles(
-        room.players,
-        room.configuration.mafiaCount,
-        room.configuration.doctorCount,
-      );
+      room.players = assignRoles(room);
       room.gameStarted = true;
 
       // Send each player their role privately via their own socket
