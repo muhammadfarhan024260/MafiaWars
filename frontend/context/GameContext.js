@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useSocket } from './SocketContext';
-import { saveSession, clearSession } from '@/lib/session';
+import { saveSession, loadSession, clearSession } from '@/lib/session';
 
 const GameContext = createContext(null);
 
