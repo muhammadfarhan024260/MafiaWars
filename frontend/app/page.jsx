@@ -9,7 +9,11 @@ import RoleReveal from '@/components/RoleReveal';
 import RoleRevelation from '@/components/RoleRevelation';
 
 export default function Home() {
-  const { gameState, createRoom, joinRoom, updateConfiguration, startGame, eliminatePlayer, shieldPlayer, revealAll, resetGame, kickPlayer } = useGame();
+  const { 
+    gameState, createRoom, joinRoom, updateConfiguration, startGame, 
+    eliminatePlayer, shieldPlayer, revealAll, resetGame, kickPlayer, 
+    leaveRoom, requestHostSwitch, acceptHostSwitch, declineHostSwitch 
+  } = useGame();
   const [viewState, setViewState] = useState('lobby'); // 'lobby', 'host', 'player', 'roleReveal', 'roleRevelation'
 
   // Determine what view to show
