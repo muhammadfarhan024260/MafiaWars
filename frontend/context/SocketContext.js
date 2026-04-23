@@ -25,11 +25,6 @@ export function SocketProvider({ children }) {
 
     newSocket.on('connect', () => {
       setIsConnected(true);
-      // Attempt to restore session on every (re)connect
-      const session = loadSession();
-      if (session?.roomCode && id) {
-        newSocket.emit('rejoinSession', { userId: id, roomCode: session.roomCode });
-      }
     });
 
     newSocket.on('disconnect', () => setIsConnected(false));

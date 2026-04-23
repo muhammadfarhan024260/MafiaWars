@@ -84,6 +84,7 @@ export function GameProvider({ children }) {
 
       // ── Reconnection ──────────────────────────────────────────────────
       sessionRestored: (data) => {
+        console.log('Session restored:', data);
         setGameState(prev => ({
           ...prev,
           roomCode:       data.roomCode,
@@ -92,7 +93,7 @@ export function GameProvider({ children }) {
           players:        data.players    ?? prev.players,
           gameStarted:    data.gameStarted,
           myRole:         data.myRole     ?? prev.myRole,
-          showRoleReveal: data.gameStarted && !data.isHost,
+          showRoleReveal: data.gameStarted && !data.isHost && data.myRole,
           configuration:  data.configuration ?? prev.configuration,
           error:          null,
         }));
@@ -127,7 +128,6 @@ export function GameProvider({ children }) {
       })),
 
       gameReset: () => {
-        clearSession();
         setGameState(prev => ({
           ...prev,
           gameStarted:        false,
@@ -149,6 +149,13 @@ export function GameProvider({ children }) {
     };
 
     Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
+
+    // Restore session once listeners are active
+    const session = loadSession();
+    if (session?.roomCode && userId) {
+      socket.emit('rejoinSession', { userId, roomCode: session.roomCode });
+    }
+
     return () => Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn));
 
   // gameState.roomCode needed for playerEliminated handler
