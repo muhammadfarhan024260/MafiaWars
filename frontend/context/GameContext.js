@@ -101,6 +101,14 @@ export function GameProvider({ children }) {
     setGameState(prev => ({ ...prev, pendingHostSwitch: null }));
   }, []);
 
+  const setError = useCallback((msg) => {
+    setGameState(prev => ({ ...prev, error: msg }));
+  }, []);
+
+  const clearError = useCallback(() => {
+    setGameState(prev => ({ ...prev, error: null }));
+  }, []);
+
   // ── Socket listeners ─────────────────────────────────────────────────────
 
   React.useEffect(() => {
@@ -196,7 +204,8 @@ export function GameProvider({ children }) {
       startGame, revealRole,
       eliminatePlayer, shieldPlayer,
       revealAll, resetGame, kickPlayer, leaveRoom,
-      requestHostSwitch, acceptHostSwitch, declineHostSwitch
+      requestHostSwitch, acceptHostSwitch, declineHostSwitch,
+      setError, clearError
     }}>
       {children}
     </GameContext.Provider>
