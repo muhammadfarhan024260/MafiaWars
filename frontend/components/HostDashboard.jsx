@@ -37,6 +37,12 @@ export default function HostDashboard({
 
   const handleUpdate = () => onUpdateConfig(mafiaCount, doctorCount);
 
+  const handleStart = () => {
+    // Automatically update config before starting
+    onUpdateConfig(mafiaCount, doctorCount);
+    onStartGame();
+  };
+
   return (
     <div className="min-h-[100dvh] flex flex-col p-4 sm:p-6 overflow-x-hidden animate-reveal">
       <div className="max-w-2xl mx-auto w-full space-y-6">
@@ -157,7 +163,7 @@ export default function HostDashboard({
                   </div>
 
                   <button
-                    onClick={onStartGame}
+                    onClick={handleStart}
                     disabled={total < 2}
                     className="btn-primary w-full text-base py-3.5"
                   >
