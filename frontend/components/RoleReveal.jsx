@@ -29,19 +29,18 @@ const ROLE_CFG = {
   },
 };
 
-function buildCfg(role, configuration) {
+function buildCfg(role) {
   if (!role) return null;
   if (ROLE_CFG[role]) return ROLE_CFG[role];
-  const customRole = (configuration?.customRoles ?? []).find(r => r.name === role);
-  const hex = customRole?.color || '#FFFFFF';
-  const glow = `${hex}A6`;
+  // Custom roles use the same all-white style as built-in roles
+  // so a screen flash never reveals the role to bystanders
   return {
-    color: hex,
-    light: hex,
-    glow,
-    bg: `radial-gradient(ellipse at center, ${hex}1A 0%, transparent 65%)`,
+    color: '#FFFFFF',
+    light: '#FFFFFF',
+    glow:  'rgba(255,255,255,0.65)',
+    bg:    'radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 65%)',
     label: role,
-    sub: 'Play your role wisely.',
+    sub:   'Play your role wisely.',
   };
 }
 
@@ -57,7 +56,7 @@ export default function RoleReveal({ role, onRevealComplete, configuration }) {
     }, 1500);
   };
 
-  const cfg = buildCfg(role, configuration);
+  const cfg = buildCfg(role);
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative overflow-hidden animate-reveal">
