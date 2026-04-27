@@ -29,80 +29,68 @@ function shuffleArray(array) {
   return shuffled;
 }
 
+// Picks one player from pool using weighted random, removes them from pool
+function weightedPick(pool, weights) {
+  let total = 0;
+  pool.forEach(p => { total += weights[p.userId]; });
+  let r = Math.random() * total;
+  let s = 0;
+  for (let i = 0; i < pool.length; i++) {
+    s += weights[pool[i].userId];
+    if (r <= s) return pool.splice(i, 1)[0];
+  }
+  return pool.splice(0, 1)[0]; // fallback
+}
+
 /**
- * Weighted selection for Mafia roles
+ * Weighted role assignment — all special roles (Mafia, Doctor, custom) use
+ * the same pity weight so no player gets stuck as Civilian repeatedly.
+ * Civilians gain +5 weight each round (cap 50). Any special role resets to 1.
  */
 function assignRoles(room) {
-  const { players, configuration, mafiaWeights } = room;
+  const { players, configuration, mafiaWeights: roleWeights } = room;
   const mCount = Number(configuration.mafiaCount);
   const dCount = Number(configuration.doctorCount);
+  const customRoles = configuration.customRoles || [];
 
-  // Initialize weights for new players
+  // Initialize weights for players joining for the first time
   players.forEach(p => {
-    if (!mafiaWeights[p.userId]) mafiaWeights[p.userId] = 10;
+    if (!roleWeights[p.userId]) roleWeights[p.userId] = 10;
   });
 
-  const availablePlayers = [...players];
-  const assignedMafia = [];
+  const pool = [...players];
 
   // 1. Pick Mafia using weights
-  for (let m = 0; m < mCount; m++) {
-    if (availablePlayers.length === 0) break;
-
-    let totalWeight = 0;
-    availablePlayers.forEach(p => { totalWeight += mafiaWeights[p.userId]; });
-
-    let random = Math.random() * totalWeight;
-    let sum = 0;
-    let pickedIndex = -1;
-
-    for (let i = 0; i < availablePlayers.length; i++) {
-      sum += mafiaWeights[availablePlayers[i].userId];
-      if (random <= sum) {
-        pickedIndex = i;
-        break;
-      }
-    }
-
-    if (pickedIndex === -1) pickedIndex = 0;
-    
-    const picked = availablePlayers.splice(pickedIndex, 1)[0];
+  for (let m = 0; m < mCount && pool.length > 0; m++) {
+    const picked = weightedPick(pool, roleWeights);
     picked.role = 'MAFIA';
-    assignedMafia.push(picked);
-    
-    // Reset weight for next time
-    mafiaWeights[picked.userId] = 1;
   }
 
-  // 2. Assign Doctors (Purely random from remaining)
-  const remainingAfterMafia = shuffleArray(availablePlayers);
-  for (let d = 0; d < dCount; d++) {
-    if (remainingAfterMafia.length === 0) break;
-    const picked = remainingAfterMafia.shift();
+  // 2. Pick Doctor using weights (from remaining pool)
+  for (let d = 0; d < dCount && pool.length > 0; d++) {
+    const picked = weightedPick(pool, roleWeights);
     picked.role = 'DOCTOR';
   }
 
-  // 3. Assign custom roles (random from remaining)
-  const customRoles = configuration.customRoles || [];
+  // 3. Pick custom roles using weights (from remaining pool)
   for (const cr of customRoles) {
-    for (let i = 0; i < cr.count; i++) {
-      if (remainingAfterMafia.length === 0) break;
-      const picked = remainingAfterMafia.shift();
+    for (let i = 0; i < cr.count && pool.length > 0; i++) {
+      const picked = weightedPick(pool, roleWeights);
       picked.role = cr.name.toUpperCase();
     }
   }
 
-  // 4. Everyone else is Civilian
-  remainingAfterMafia.forEach(p => {
-    p.role = 'CIVILIAN';
-  });
+  // 4. Everyone left is Civilian
+  pool.forEach(p => { p.role = 'CIVILIAN'; });
 
-  // 5. Update weights for non-mafia (Increase pity)
+  // 5. Update weights for next round
+  //    - Special role players reset to 1 (they just had their turn)
+  //    - Civilians gain +5 pity (capped at 50)
   players.forEach(p => {
-    if (p.role !== 'MAFIA') {
-      mafiaWeights[p.userId] += 5;
-      // Cap weight at 50 to prevent huge outliers
-      if (mafiaWeights[p.userId] > 50) mafiaWeights[p.userId] = 50;
+    if (p.role === 'CIVILIAN') {
+      roleWeights[p.userId] = Math.min(roleWeights[p.userId] + 5, 50);
+    } else {
+      roleWeights[p.userId] = 1;
     }
     p.eliminated = false;
     p.shielded = false;
