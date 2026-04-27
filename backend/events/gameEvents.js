@@ -40,7 +40,8 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       if (playerIndex !== -1) {
         const player = room.players[playerIndex];
         // Notify the player they've been kicked
-        io.to(player.id).emit('roomClosed', { message: 'You have been removed from the room' });
+        const kickedSocket = io.sockets.sockets.get(player.socketId);
+        if (kickedSocket) kickedSocket.emit('roomClosed', { message: 'You have been removed from the room' });
         
         // Remove from list
         room.players.splice(playerIndex, 1);
