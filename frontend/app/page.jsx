@@ -62,14 +62,15 @@ export default function Home() {
       {viewState === 'lobby' && <Lobby onRoomCreated={handleCreateRoom} onJoinRoom={handleJoinRoom} />}
       
       {viewState === 'roleReveal' && (
-        <RoleReveal role={gameState.myRole} onRevealComplete={() => {}} />
+        <RoleReveal role={gameState.myRole} onRevealComplete={() => {}} configuration={gameState.configuration} />
       )}
       
       {viewState === 'roleRevelation' && (
-        <RoleRevelation 
-          players={gameState.players} 
-          isHost={gameState.isHost} 
-          onClose={() => gameState.isHost ? resetGame() : setViewState('player')} 
+        <RoleRevelation
+          players={gameState.players}
+          isHost={gameState.isHost}
+          onClose={() => gameState.isHost ? resetGame() : setViewState('player')}
+          configuration={gameState.configuration}
         />
       )}
       

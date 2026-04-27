@@ -29,7 +29,23 @@ const ROLE_CFG = {
   },
 };
 
-export default function RoleReveal({ role, onRevealComplete }) {
+function buildCfg(role, configuration) {
+  if (!role) return null;
+  if (ROLE_CFG[role]) return ROLE_CFG[role];
+  const customRole = (configuration?.customRoles ?? []).find(r => r.name === role);
+  const hex = customRole?.color || '#FFFFFF';
+  const glow = `${hex}A6`;
+  return {
+    color: hex,
+    light: hex,
+    glow,
+    bg: `radial-gradient(ellipse at center, ${hex}1A 0%, transparent 65%)`,
+    label: role,
+    sub: 'Play your role wisely.',
+  };
+}
+
+export default function RoleReveal({ role, onRevealComplete, configuration }) {
   const [revealed, setRevealed] = useState(false);
 
   const handleReveal = () => {
@@ -41,7 +57,7 @@ export default function RoleReveal({ role, onRevealComplete }) {
     }, 1500);
   };
 
-  const cfg = role ? ROLE_CFG[role] : null;
+  const cfg = buildCfg(role, configuration);
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative overflow-hidden animate-reveal">

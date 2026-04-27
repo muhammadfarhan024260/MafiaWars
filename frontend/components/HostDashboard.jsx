@@ -8,6 +8,30 @@ const ROLE = {
   CIVILIAN: { hex: '#132ED2', light: '#4A6FFF', bg: 'rgba(74,111,255,0.1)', border: 'rgba(74,111,255,0.3)' },
 };
 
+const ROLE_PALETTE = [
+  '#8B5CF6', // violet
+  '#F97316', // orange
+  '#F59E0B', // amber
+  '#06B6D4', // cyan
+  '#EC4899', // pink
+  '#2DD4BF', // teal
+  '#FB7185', // rose
+  '#A3E635', // lime
+  '#818CF8', // indigo
+  '#E879F9', // fuchsia
+  '#38BDF8', // sky
+  '#34D399', // emerald
+];
+
+function buildRoleConfig(customRoles) {
+  const cfg = { ...ROLE };
+  customRoles.forEach(r => {
+    const hex = r.color || '#888888';
+    cfg[r.name] = { hex, light: hex, bg: `${hex}1A`, border: `${hex}4D` };
+  });
+  return cfg;
+}
+
 export default function HostDashboard({
   roomCode, players, configuration,
   onUpdateConfig, onStartGame, isGameStarted,
@@ -48,7 +72,12 @@ export default function HostDashboard({
     const name = newRoleName.trim().toUpperCase();
     if (!name) return;
     if (customRoles.some(r => r.name === name)) return;
-    setCustomRoles(prev => [...prev, { name, count: 0 }]);
+    const usedColors = customRoles.map(r => r.color);
+    const available = ROLE_PALETTE.filter(c => !usedColors.includes(c));
+    const color = available.length > 0
+      ? available[Math.floor(Math.random() * available.length)]
+      : ROLE_PALETTE[Math.floor(Math.random() * ROLE_PALETTE.length)];
+    setCustomRoles(prev => [...prev, { name, count: 0, color }]);
     setNewRoleName('');
   };
   const removeCustomRole = (index) => {
@@ -137,7 +166,9 @@ export default function HostDashboard({
                 </div>
               ) : (
                 players.map((player) => {
-                  const rc = player.role ? ROLE[player.role] : null;
+                  const roleConfig = buildRoleConfig(customRoles);
+                  const rc = player.role ? roleConfig[player.role] : null;
+                  const showBadge = player.role && player.role !== 'CIVILIAN';
                   return (
                     <div
                       key={player.id}
@@ -149,9 +180,9 @@ export default function HostDashboard({
                       {/* Name row */}
                       <div className="flex items-center gap-2 flex-1">
                         {/* Simple initial-based avatar */}
-                        <div 
+                        <div
                           className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-bebas text-sm border"
-                          style={{ 
+                          style={{
                             background: player.eliminated ? 'rgba(0,0,0,0.2)' : rc ? `${rc.hex}22` : 'rgba(255,255,255,0.05)',
                             borderColor: player.eliminated ? 'rgba(255,255,255,0.05)' : rc ? rc.border : 'rgba(255,255,255,0.1)',
                             color: player.eliminated ? 'rgba(255,255,255,0.1)' : rc ? rc.light : 'rgba(255,255,255,0.4)',
@@ -178,10 +209,20 @@ export default function HostDashboard({
                         </button>
                       </div>
 
+                      {/* Role badge (non-civilian only) */}
+                      {showBadge && rc && !player.eliminated && (
+                        <div
+                          className="ml-2 px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest border flex-shrink-0"
+                          style={{ color: rc.light, borderColor: `${rc.hex}50`, background: rc.bg }}
+                        >
+                          {player.role}
+                        </div>
+                      )}
+
                       {/* Shield badge */}
                       {player.shielded && (
                         <div
-                          className="ml-2 px-2 text-center text-[8px] font-bold uppercase tracking-widest rounded-lg py-0.5 border"
+                          className="ml-2 px-2 text-center text-[8px] font-bold uppercase tracking-widest rounded-lg py-0.5 border flex-shrink-0"
                           style={{ color: '#19C119', borderColor: 'rgba(25,193,25,0.25)', background: 'rgba(25,193,25,0.08)' }}
                         >
                           Shielded
@@ -217,6 +258,7 @@ export default function HostDashboard({
                           >
                             ×
                           </button>
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: role.color || '#888' }} />
                           <span className="text-[10px] text-white/35 uppercase tracking-widest font-bold">{role.name}</span>
                         </div>
                         <div className="flex items-center gap-3">

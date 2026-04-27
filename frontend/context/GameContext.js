@@ -116,6 +116,13 @@ export function GameProvider({ children }) {
 
     const handlers = {
 
+      // ── Re-authorize on socket reconnect (socket.id changes each time) ─
+      connect: () => {
+        if (gameState.roomCode) {
+          socket.emit('rejoinSession', { userId, roomCode: gameState.roomCode });
+        }
+      },
+
       // ── Reconnection ──────────────────────────────────────────────────
       sessionRestored: (data) => {
         console.log('Session restored:', data);

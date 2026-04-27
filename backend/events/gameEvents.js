@@ -219,7 +219,7 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       const total = room.players.length;
-      const sanitizedCustom = (customRoles || []).map(r => ({ name: String(r.name).toUpperCase(), count: Number(r.count) }));
+      const sanitizedCustom = (customRoles || []).map(r => ({ name: String(r.name).toUpperCase(), count: Number(r.count), color: String(r.color || '#888888') }));
       const customTotal = sanitizedCustom.reduce((s, r) => s + r.count, 0);
 
       if (mafiaCount + doctorCount + customTotal > total) {
