@@ -214,21 +214,25 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
     });
 
     // ── Update configuration (host only) ────────────────────────────────────
-    socket.on('updateConfiguration', ({ roomCode, mafiaCount, doctorCount }) => {
+    socket.on('updateConfiguration', ({ roomCode, mafiaCount, doctorCount, customRoles }) => {
       const room = rooms.get(roomCode);
       if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       const total = room.players.length;
-      if (mafiaCount + doctorCount > total) {
+      const sanitizedCustom = (customRoles || []).map(r => ({ name: String(r.name).toUpperCase(), count: Number(r.count) }));
+      const customTotal = sanitizedCustom.reduce((s, r) => s + r.count, 0);
+
+      if (mafiaCount + doctorCount + customTotal > total) {
         socket.emit('error', { message: 'Role count exceeds player count' }); return;
       }
 
       room.configuration.mafiaCount  = Number(mafiaCount);
       room.configuration.doctorCount = Number(doctorCount);
+      room.configuration.customRoles = sanitizedCustom;
 
       io.to(roomCode).emit('configurationUpdated', {
-        mafiaCount, doctorCount,
-        civilianCount: total - mafiaCount - doctorCount,
+        mafiaCount, doctorCount, customRoles: sanitizedCustom,
+        civilianCount: total - mafiaCount - doctorCount - customTotal,
         totalPlayers: total,
       });
     });

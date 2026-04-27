@@ -11,7 +11,7 @@ const INITIAL_STATE = {
   playerId:          null,
   isHost:            false,
   players:           [],
-  configuration:     { mafiaCount: 1, doctorCount: 0 },
+  configuration:     { mafiaCount: 1, doctorCount: 0, customRoles: [] },
   gameStarted:       false,
   myRole:            null,
   showRoleReveal:    false,
@@ -64,9 +64,9 @@ export function GameProvider({ children }) {
     socket.emit('joinRoom', { roomCode, playerName, userId });
   }), [socket, userId]);
 
-  const updateConfiguration = useCallback((mafiaCount, doctorCount) => {
+  const updateConfiguration = useCallback((mafiaCount, doctorCount, customRoles = []) => {
     if (!socket) return;
-    socket.emit('updateConfiguration', { roomCode: gameState.roomCode, mafiaCount, doctorCount });
+    socket.emit('updateConfiguration', { roomCode: gameState.roomCode, mafiaCount, doctorCount, customRoles });
   }, [socket, gameState.roomCode]);
 
   const startGame    = useCallback(() => socket?.emit('startGame',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
@@ -145,7 +145,7 @@ export function GameProvider({ children }) {
 
       configurationUpdated: (config) => setGameState(prev => ({
         ...prev,
-        configuration: { mafiaCount: config.mafiaCount, doctorCount: config.doctorCount },
+        configuration: { mafiaCount: config.mafiaCount, doctorCount: config.doctorCount, customRoles: config.customRoles ?? [] },
       })),
 
       gameStarted: () => setGameState(prev => ({ ...prev, gameStarted: true, showRoleReveal: true })),

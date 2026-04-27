@@ -16,31 +16,49 @@ export default function HostDashboard({
 }) {
   const [mafiaCount,  setMafiaCount]  = useState(configuration?.mafiaCount  ?? 1);
   const [doctorCount, setDoctorCount] = useState(configuration?.doctorCount ?? 0);
+  const [customRoles, setCustomRoles] = useState((configuration?.customRoles ?? []).map(r => ({ ...r })));
+  const [newRoleName, setNewRoleName] = useState('');
   const [kickConfirm, setKickConfirm] = useState(null); // { id, name }
 
   useEffect(() => {
     setMafiaCount(configuration?.mafiaCount   ?? 1);
     setDoctorCount(configuration?.doctorCount ?? 0);
+    setCustomRoles((configuration?.customRoles ?? []).map(r => ({ ...r })));
   }, [configuration]);
 
-  const total    = players.length;
-  const civCount = Math.max(0, total - mafiaCount - doctorCount);
-  const alive    = players.filter(p => !p.eliminated).length;
+  const total       = players.length;
+  const customTotal = customRoles.reduce((s, r) => s + r.count, 0);
+  const civCount    = Math.max(0, total - mafiaCount - doctorCount - customTotal);
+  const alive       = players.filter(p => !p.eliminated).length;
 
   const handleMafia = (n) => {
-    const v = Math.min(Math.max(0, n), Math.max(0, total - doctorCount));
+    const v = Math.min(Math.max(0, n), Math.max(0, total - doctorCount - customTotal));
     setMafiaCount(v);
   };
   const handleDoctor = (n) => {
-    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount));
+    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - customTotal));
     setDoctorCount(v);
   };
+  const handleCustomRole = (index, n) => {
+    const otherCustomTotal = customRoles.reduce((s, r, i) => i !== index ? s + r.count : s, 0);
+    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - doctorCount - otherCustomTotal));
+    setCustomRoles(prev => prev.map((r, i) => i === index ? { ...r, count: v } : r));
+  };
+  const addCustomRole = () => {
+    const name = newRoleName.trim().toUpperCase();
+    if (!name) return;
+    if (customRoles.some(r => r.name === name)) return;
+    setCustomRoles(prev => [...prev, { name, count: 0 }]);
+    setNewRoleName('');
+  };
+  const removeCustomRole = (index) => {
+    setCustomRoles(prev => prev.filter((_, i) => i !== index));
+  };
 
-  const handleUpdate = () => onUpdateConfig(mafiaCount, doctorCount);
+  const handleUpdate = () => onUpdateConfig(mafiaCount, doctorCount, customRoles);
 
   const handleStart = () => {
-    // Automatically update config before starting
-    onUpdateConfig(mafiaCount, doctorCount);
+    onUpdateConfig(mafiaCount, doctorCount, customRoles);
     onStartGame();
   };
 
@@ -188,6 +206,45 @@ export default function HostDashboard({
                   <div className="space-y-4">
                     <CountControl label="Mafia" count={mafiaCount} onChange={handleMafia} color="white" />
                     <CountControl label="Doctor" count={doctorCount} onChange={handleDoctor} color="white" />
+
+                    {/* Custom roles */}
+                    {customRoles.map((role, i) => (
+                      <div key={role.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => removeCustomRole(i)}
+                            className="w-5 h-5 rounded flex items-center justify-center text-white/20 hover:text-[#FF4444] hover:bg-[#FF4444]/10 transition-all font-bold text-sm leading-none"
+                          >
+                            ×
+                          </button>
+                          <span className="text-[10px] text-white/35 uppercase tracking-widest font-bold">{role.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => handleCustomRole(i, role.count - 1)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 font-bold text-lg flex items-center justify-center transition-colors active:scale-90">−</button>
+                          <span className="font-bebas text-2xl w-5 text-center text-white">{role.count}</span>
+                          <button onClick={() => handleCustomRole(i, role.count + 1)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 font-bold text-xl flex items-center justify-center transition-colors active:scale-90">+</button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add custom role */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        value={newRoleName}
+                        onChange={e => setNewRoleName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addCustomRole()}
+                        placeholder="New role name..."
+                        maxLength={20}
+                        className="flex-1 bg-white/5 rounded-lg px-3 py-1.5 text-[10px] text-white/60 placeholder-white/20 border border-white/10 focus:outline-none focus:border-white/20 uppercase tracking-widest"
+                      />
+                      <button
+                        onClick={addCustomRole}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-all border border-white/10"
+                      >
+                        Add
+                      </button>
+                    </div>
+
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
                       <span className="text-[10px] text-white/15 uppercase tracking-widest font-medium">Civilians (Auto)</span>
                       <span className="font-bebas text-xl text-white/30">{civCount}</span>

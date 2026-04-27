@@ -13,7 +13,7 @@ function createRoom(hostSocketId, hostName, hostUserId) {
     hostName,
     players: [],
     gameStarted: false,
-    configuration: { mafiaCount: 1, doctorCount: 0 },
+    configuration: { mafiaCount: 1, doctorCount: 0, customRoles: [] },
     mafiaWeights: {}, // Stores weights by userId
     createdAt:  new Date(),
     updatedAt:  new Date(),
@@ -82,12 +82,22 @@ function assignRoles(room) {
     picked.role = 'DOCTOR';
   }
 
-  // 3. Everyone else is Civilian
+  // 3. Assign custom roles (random from remaining)
+  const customRoles = configuration.customRoles || [];
+  for (const cr of customRoles) {
+    for (let i = 0; i < cr.count; i++) {
+      if (remainingAfterMafia.length === 0) break;
+      const picked = remainingAfterMafia.shift();
+      picked.role = cr.name.toUpperCase();
+    }
+  }
+
+  // 4. Everyone else is Civilian
   remainingAfterMafia.forEach(p => {
     p.role = 'CIVILIAN';
   });
 
-  // 4. Update weights for non-mafia (Increase pity)
+  // 5. Update weights for non-mafia (Increase pity)
   players.forEach(p => {
     if (p.role !== 'MAFIA') {
       mafiaWeights[p.userId] += 5;
