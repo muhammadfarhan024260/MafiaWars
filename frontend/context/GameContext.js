@@ -14,9 +14,20 @@ const INITIAL_STATE = {
   configuration:     { mafiaCount: 1, doctorCount: 0, customRoles: [] },
   gameStarted:       false,
   myRole:            null,
+  mafiaTeammates:    [], // auto mode: other mafia members [{id, name}]
   showRoleReveal:    false,
   showRoleRevelation:false,
   pendingHostSwitch: null, // { userId, name }
+  // Auto mode state
+  gameMode:          'manual', // 'manual' | 'automatic'
+  currentPhase:      'lobby',  // 'lobby' | 'night' | 'day'
+  roundNumber:       0,
+  phaseTimerSeconds: 0,
+  isSpectator:       false,
+  dayVotes:          {},       // { [userId]: targetId }
+  nightResult:       null,     // { eliminated: {id,name}|null, saved: bool }
+  dayResult:         null,     // { eliminated: {id,name}|null, tie: bool }
+  gameOverData:      null,     // { winner, players[] }
   error:             null,
 };
 
@@ -83,6 +94,10 @@ export function GameProvider({ children }) {
       setGameState(INITIAL_STATE);
     }
   }, [socket, gameState.roomCode, userId]);
+
+  const toggleGameMode   = useCallback((gameMode) => socket?.emit('toggleGameMode', { roomCode: gameState.roomCode, gameMode }), [socket, gameState.roomCode]);
+  const submitNightAction = useCallback((targetId) => socket?.emit('submitNightAction', { roomCode: gameState.roomCode, userId, targetId }), [socket, gameState.roomCode, userId]);
+  const submitDayVote     = useCallback((targetId) => socket?.emit('submitDayVote',     { roomCode: gameState.roomCode, userId, targetId }), [socket, gameState.roomCode, userId]);
 
   const requestHostSwitch = useCallback(() => {
     if (socket && gameState.roomCode) {
@@ -155,9 +170,19 @@ export function GameProvider({ children }) {
         configuration: { mafiaCount: config.mafiaCount, doctorCount: config.doctorCount, customRoles: config.customRoles ?? [] },
       })),
 
-      gameStarted: () => setGameState(prev => ({ ...prev, gameStarted: true, showRoleReveal: true })),
+      gameStarted: (data) => setGameState(prev => ({
+        ...prev,
+        gameStarted:  true,
+        showRoleReveal: true,
+        gameMode:     data.gameMode ?? prev.gameMode,
+      })),
 
-      roleDealt: (data) => setGameState(prev => ({ ...prev, myRole: data.role })),
+      roleDealt: (data) => setGameState(prev => ({
+        ...prev,
+        myRole:          data.role,
+        mafiaTeammates:  data.mafiaTeammates ?? [],
+        playerId:        data.playerId ?? prev.playerId,
+      })),
 
       roleReveal: (data) => setGameState(prev => ({ ...prev, myRole: data.role, showRoleReveal: true })),
 
@@ -174,11 +199,59 @@ export function GameProvider({ children }) {
           ...prev,
           gameStarted:        false,
           myRole:             null,
+          mafiaTeammates:     [],
           players:            prev.players.map(p => ({ ...p, role: null, eliminated: false, shielded: false })),
           showRoleReveal:     false,
           showRoleRevelation: false,
+          currentPhase:       'lobby',
+          roundNumber:        0,
+          isSpectator:        false,
+          dayVotes:           {},
+          nightResult:        null,
+          dayResult:          null,
+          gameOverData:       null,
         }));
       },
+
+      // ── Auto mode events ────────────────────────────────────────────────
+      gameModeChanged: (data) => setGameState(prev => ({ ...prev, gameMode: data.gameMode })),
+
+      phaseChanged: (data) => setGameState(prev => ({
+        ...prev,
+        currentPhase:      data.phase,
+        roundNumber:       data.roundNumber,
+        phaseTimerSeconds: data.timerSeconds,
+        nightResult:       null,
+        dayResult:         null,
+      })),
+
+      nightResolved: (data) => setGameState(prev => ({
+        ...prev,
+        nightResult: data,
+        isSpectator: data.eliminated?.id === prev.playerId ? true : prev.isSpectator,
+        players: data.eliminated
+          ? prev.players.map(p => p.id === data.eliminated.id ? { ...p, eliminated: true } : p)
+          : prev.players,
+      })),
+
+      dayVoteUpdate: (data) => setGameState(prev => ({ ...prev, dayVotes: data.votes })),
+
+      dayResolved: (data) => setGameState(prev => ({
+        ...prev,
+        dayResult: data,
+        isSpectator: data.eliminated?.id === prev.playerId ? true : prev.isSpectator,
+        players: data.eliminated
+          ? prev.players.map(p => p.id === data.eliminated.id ? { ...p, eliminated: true } : p)
+          : prev.players,
+      })),
+
+      gameOver: (data) => setGameState(prev => ({
+        ...prev,
+        gameOverData:       data,
+        gameStarted:        false,
+        currentPhase:       'lobby',
+        isSpectator:        false,
+      })),
 
       roomState: (state) => setGameState(prev => ({ ...prev, ...state, roomCode: state.roomCode })),
 
@@ -212,6 +285,7 @@ export function GameProvider({ children }) {
       eliminatePlayer, shieldPlayer,
       revealAll, resetGame, kickPlayer, leaveRoom,
       requestHostSwitch, acceptHostSwitch, declineHostSwitch,
+      toggleGameMode, submitNightAction, submitDayVote,
       setError, clearError
     }}>
       {children}

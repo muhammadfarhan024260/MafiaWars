@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { createRoom, assignRoles, getGameStats } = require('../utils/gameLogic');
+const { createRoom, assignRoles, getGameStats, checkWinCondition, resolveNightActions, resolveDayVotes } = require('../utils/gameLogic');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -242,27 +242,64 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
     socket.on('startGame', ({ roomCode }) => {
       const room = rooms.get(roomCode);
       if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
-      if (room.players.length < 2)            { socket.emit('error', { message: 'Need at least 2 players' }); return; }
+
+      if (room.gameMode === 'automatic') {
+        // In auto mode host becomes a player — need at least 2 players (+ host = 3 total)
+        if (room.players.length < 2) { socket.emit('error', { message: 'Need at least 2 players (plus you as host)' }); return; }
+
+        // Add host as a player if not already in list
+        const hostAlreadyPlayer = room.players.some(p => p.userId === room.hostUserId);
+        if (!hostAlreadyPlayer) {
+          room.players.push({
+            id:         uuidv4(),
+            userId:     room.hostUserId,
+            socketId:   room.hostId,
+            name:       room.hostName,
+            role:       null,
+            eliminated: false,
+            shielded:   false,
+          });
+        }
+      } else {
+        if (room.players.length < 2) { socket.emit('error', { message: 'Need at least 2 players' }); return; }
+      }
 
       room.players = assignRoles(room);
       room.gameStarted = true;
 
-      // Send each player their role privately via their own socket
+      // Send each player their role privately
       room.players.forEach(player => {
         const ps = io.sockets.sockets.get(player.socketId);
-        if (ps) ps.emit('roleDealt', { role: player.role, playerId: player.id });
+        if (ps) {
+          // In auto mode, also tell Mafia who their teammates are
+          const teammates = room.gameMode === 'automatic' && player.role === 'MAFIA'
+            ? room.players.filter(p => p.role === 'MAFIA' && p.id !== player.id).map(p => ({ id: p.id, name: p.name }))
+            : [];
+          ps.emit('roleDealt', { role: player.role, playerId: player.id, mafiaTeammates: teammates });
+        }
       });
 
-      io.to(roomCode).emit('gameStarted', {
-        totalPlayers: room.players.length,
-        stats: getGameStats(room.players),
-      });
+      if (room.gameMode === 'automatic') {
+        io.to(roomCode).emit('gameStarted', {
+          totalPlayers: room.players.length,
+          stats: getGameStats(room.players),
+          gameMode: 'automatic',
+        });
+        io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+        // Night phase starts after role reveal (give 3s for the reveal animation)
+        setTimeout(() => startNightPhase(room, roomCode), 3000);
+      } else {
+        io.to(roomCode).emit('gameStarted', {
+          totalPlayers: room.players.length,
+          stats: getGameStats(room.players),
+          gameMode: 'manual',
+        });
+        // Host sees full list with roles; everyone else sees anonymised list
+        io.to(room.hostId).emit('playerListUpdate', playerListForHost(room));
+        socket.to(roomCode).emit('playerListUpdate', playerListForAll(room));
+      }
 
-      // Host sees full list with roles; everyone else sees anonymised list
-      io.to(room.hostId).emit('playerListUpdate', playerListForHost(room));
-      socket.to(roomCode).emit('playerListUpdate', playerListForAll(room));
-
-      console.log(`Game started in room ${roomCode}`);
+      console.log(`Game started in room ${roomCode} (${room.gameMode} mode)`);
     });
 
     // ── Reveal role (1.5 s private flash) ───────────────────────────────────
@@ -317,7 +354,16 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       const room = rooms.get(roomCode);
       if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
+      clearTimeout(room.phaseTimer);
       room.gameStarted = false;
+      room.currentPhase = 'lobby';
+      room.nightActions = { submissions: [], resolved: false };
+      room.dayVotes = { votes: {}, resolved: false };
+
+      // In auto mode, remove the host from the player list on reset
+      if (room.gameMode === 'automatic') {
+        room.players = room.players.filter(p => p.userId !== room.hostUserId);
+      }
       room.players.forEach(p => { p.role = null; p.eliminated = false; p.shielded = false; });
 
       io.to(roomCode).emit('gameReset', { totalPlayers: room.players.length });
@@ -379,6 +425,129 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       
       io.to(roomCode).emit('playerListUpdate', playerListForAll(room));
       io.to(room.hostId).emit('playerListUpdate', playerListForHost(room));
+    });
+
+    // ── Automatic mode helpers ──────────────────────────────────────────────
+
+    function startNightPhase(room, roomCode) {
+      room.currentPhase = 'night';
+      room.roundNumber += 1;
+      room.nightActions = { submissions: [], resolved: false };
+      io.to(roomCode).emit('phaseChanged', {
+        phase: 'night',
+        roundNumber: room.roundNumber,
+        timerSeconds: 30,
+      });
+
+      room.phaseTimer = setTimeout(() => {
+        if (room.currentPhase !== 'night' || room.nightActions.resolved) return;
+        room.nightActions.resolved = true;
+        const { eliminated, saved } = resolveNightActions(room);
+        io.to(roomCode).emit('nightResolved', { eliminated, saved });
+
+        const winner = checkWinCondition(room.players);
+        if (winner) {
+          endGame(room, roomCode, winner);
+        } else {
+          setTimeout(() => startDayPhase(room, roomCode), 3500);
+        }
+      }, 30_000);
+    }
+
+    function startDayPhase(room, roomCode) {
+      room.currentPhase = 'day';
+      room.dayVotes = { votes: {}, resolved: false };
+      io.to(roomCode).emit('phaseChanged', {
+        phase: 'day',
+        roundNumber: room.roundNumber,
+        timerSeconds: 120,
+      });
+
+      room.phaseTimer = setTimeout(() => {
+        if (room.currentPhase !== 'day' || room.dayVotes.resolved) return;
+        finalizeDay(room, roomCode);
+      }, 120_000);
+    }
+
+    function finalizeDay(room, roomCode) {
+      room.dayVotes.resolved = true;
+      const { eliminated, tie } = resolveDayVotes(room);
+      io.to(roomCode).emit('dayResolved', { eliminated, tie });
+
+      const winner = checkWinCondition(room.players);
+      if (winner) {
+        endGame(room, roomCode, winner);
+      } else {
+        setTimeout(() => startNightPhase(room, roomCode), 3500);
+      }
+    }
+
+    function endGame(room, roomCode, winner) {
+      room.currentPhase = 'lobby';
+      room.gameStarted = false;
+      clearTimeout(room.phaseTimer);
+      io.to(roomCode).emit('gameOver', {
+        winner,
+        players: room.players.map(p => ({ id: p.id, name: p.name, role: p.role, eliminated: p.eliminated })),
+      });
+    }
+
+    // ── Toggle game mode (host only, between rounds) ────────────────────────
+    socket.on('toggleGameMode', ({ roomCode, gameMode }) => {
+      const room = rooms.get(roomCode);
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
+      if (room.gameStarted) { socket.emit('error', { message: 'Cannot change mode mid-game' }); return; }
+
+      room.gameMode = gameMode === 'automatic' ? 'automatic' : 'manual';
+      io.to(roomCode).emit('gameModeChanged', { gameMode: room.gameMode });
+    });
+
+    // ── Submit night action (any alive player in auto mode) ─────────────────
+    socket.on('submitNightAction', ({ roomCode, userId, targetId }) => {
+      const room = rooms.get(roomCode);
+      if (!room || room.currentPhase !== 'night' || room.nightActions.resolved) return;
+
+      const player = room.players.find(p => p.userId === userId);
+      if (!player || player.eliminated) return;
+
+      // Replace previous submission from same user
+      room.nightActions.submissions = room.nightActions.submissions.filter(s => s.userId !== userId);
+      room.nightActions.submissions.push({ userId, targetId, timestamp: Date.now() });
+
+      // Check if all alive players have submitted
+      const aliveCount = room.players.filter(p => !p.eliminated).length;
+      if (room.nightActions.submissions.length >= aliveCount) {
+        clearTimeout(room.phaseTimer);
+        room.nightActions.resolved = true;
+        const { eliminated, saved } = resolveNightActions(room);
+        io.to(roomCode).emit('nightResolved', { eliminated, saved });
+
+        const winner = checkWinCondition(room.players);
+        if (winner) {
+          endGame(room, roomCode, winner);
+        } else {
+          setTimeout(() => startDayPhase(room, roomCode), 3500);
+        }
+      }
+    });
+
+    // ── Submit day vote (any alive player in auto mode) ─────────────────────
+    socket.on('submitDayVote', ({ roomCode, userId, targetId }) => {
+      const room = rooms.get(roomCode);
+      if (!room || room.currentPhase !== 'day' || room.dayVotes.resolved) return;
+
+      const voter = room.players.find(p => p.userId === userId);
+      if (!voter || voter.eliminated) return;
+
+      room.dayVotes.votes[userId] = targetId;
+      io.to(roomCode).emit('dayVoteUpdate', { votes: room.dayVotes.votes });
+
+      // Check if all alive players have voted
+      const aliveCount = room.players.filter(p => !p.eliminated).length;
+      if (Object.keys(room.dayVotes.votes).length >= aliveCount) {
+        clearTimeout(room.phaseTimer);
+        finalizeDay(room, roomCode);
+      }
     });
 
     // ── Get room state ──────────────────────────────────────────────────────

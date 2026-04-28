@@ -34,6 +34,7 @@ function buildRoleConfig(customRoles) {
 
 export default function HostDashboard({
   roomCode, players, configuration,
+  gameMode = 'manual', onToggleGameMode,
   onUpdateConfig, onStartGame, isGameStarted,
   onRevealAll, onReset, onEliminate, onShield, onKick, onLeave,
   pendingHostSwitch, onAcceptSwitch, onDeclineSwitch,
@@ -302,12 +303,38 @@ export default function HostDashboard({
                     </button>
                   </div>
 
+                  {/* Auto mode toggle */}
+                  <div
+                    className="flex items-center justify-between px-3 py-3 rounded-xl border"
+                    style={{ background: gameMode === 'automatic' ? 'rgba(197,17,17,0.06)' : 'rgba(255,255,255,0.02)', borderColor: gameMode === 'automatic' ? 'rgba(197,17,17,0.2)' : 'rgba(255,255,255,0.06)' }}
+                  >
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Automatic Mode</p>
+                      <p className="text-[8px] text-white/20 uppercase tracking-widest mt-0.5">
+                        {gameMode === 'automatic' ? 'You play as a player — no narrator' : 'Manual — you narrate the game'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => onToggleGameMode?.(gameMode === 'automatic' ? 'manual' : 'automatic')}
+                      className="relative w-10 h-5 rounded-full transition-all duration-300 flex-shrink-0"
+                      style={{ background: gameMode === 'automatic' ? 'rgba(197,17,17,0.5)' : 'rgba(255,255,255,0.1)' }}
+                    >
+                      <div
+                        className="absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300"
+                        style={{
+                          left: gameMode === 'automatic' ? '1.25rem' : '0.125rem',
+                          background: gameMode === 'automatic' ? '#ff4444' : 'rgba(255,255,255,0.4)',
+                        }}
+                      />
+                    </button>
+                  </div>
+
                   <button
                     onClick={handleStart}
                     disabled={total < 2}
                     className="btn-primary w-full text-base py-3.5"
                   >
-                    Start Game
+                    {gameMode === 'automatic' ? 'Start Game (Auto)' : 'Start Game'}
                   </button>
                   {total < 2 && (
                     <p className="text-center text-[9px] text-white/20 uppercase tracking-widest -mt-2">

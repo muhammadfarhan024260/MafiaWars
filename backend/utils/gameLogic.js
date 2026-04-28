@@ -15,6 +15,13 @@ function createRoom(hostSocketId, hostName, hostUserId) {
     gameStarted: false,
     configuration: { mafiaCount: 1, doctorCount: 0, customRoles: [] },
     mafiaWeights: {}, // Stores weights by userId
+    // Automatic mode state
+    gameMode:     'manual', // 'manual' | 'automatic'
+    currentPhase: 'lobby',  // 'lobby' | 'night' | 'day'
+    roundNumber:  0,
+    nightActions: { submissions: [], resolved: false },
+    dayVotes:     { votes: {}, resolved: false },
+    phaseTimer:   null,
     createdAt:  new Date(),
     updatedAt:  new Date(),
   };
@@ -110,4 +117,81 @@ function getGameStats(players) {
   };
 }
 
-module.exports = { generateRoomCode, createRoom, shuffleArray, assignRoles, getGameStats };
+function checkWinCondition(players) {
+  const alive = players.filter(p => !p.eliminated);
+  const mafiaAlive = alive.filter(p => p.role === 'MAFIA').length;
+  const nonMafiaAlive = alive.length - mafiaAlive;
+  if (mafiaAlive === 0) return 'CIVILIANS';
+  if (mafiaAlive >= nonMafiaAlive) return 'MAFIA';
+  return null;
+}
+
+function resolveNightActions(room) {
+  const { nightActions, players } = room;
+  const alive = players.filter(p => !p.eliminated);
+
+  // Collect mafia kill votes
+  const mafiaUserIds = new Set(alive.filter(p => p.role === 'MAFIA').map(p => p.userId));
+  const mafiaSubmissions = nightActions.submissions.filter(s => mafiaUserIds.has(s.userId));
+
+  let killTargetId = null;
+  if (mafiaSubmissions.length > 0) {
+    // Count votes per target
+    const tally = {};
+    mafiaSubmissions.forEach(s => {
+      if (!tally[s.targetId]) tally[s.targetId] = { count: 0, firstTs: s.timestamp };
+      tally[s.targetId].count++;
+      if (s.timestamp < tally[s.targetId].firstTs) tally[s.targetId].firstTs = s.timestamp;
+    });
+    // Majority pick; tie → earliest timestamp
+    const sorted = Object.entries(tally).sort((a, b) =>
+      b[1].count !== a[1].count ? b[1].count - a[1].count : a[1].firstTs - b[1].firstTs
+    );
+    killTargetId = sorted[0][0];
+  }
+
+  // Doctor save
+  const doctorUserIds = new Set(alive.filter(p => p.role === 'DOCTOR').map(p => p.userId));
+  const doctorSubmission = nightActions.submissions.find(s => doctorUserIds.has(s.userId));
+  const saveTargetId = doctorSubmission ? doctorSubmission.targetId : null;
+
+  let eliminated = null;
+  let saved = false;
+
+  if (killTargetId) {
+    if (killTargetId === saveTargetId) {
+      saved = true;
+    } else {
+      const target = players.find(p => p.id === killTargetId);
+      if (target) {
+        target.eliminated = true;
+        eliminated = { id: target.id, name: target.name };
+      }
+    }
+  }
+
+  return { eliminated, saved };
+}
+
+function resolveDayVotes(room) {
+  const { dayVotes, players } = room;
+  const tally = {};
+  Object.values(dayVotes.votes).forEach(targetId => {
+    tally[targetId] = (tally[targetId] || 0) + 1;
+  });
+
+  if (Object.keys(tally).length === 0) return { eliminated: null, tie: false };
+
+  const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  const topCount = sorted[0][1];
+  const topCandidates = sorted.filter(([, c]) => c === topCount);
+
+  if (topCandidates.length > 1) return { eliminated: null, tie: true };
+
+  const target = players.find(p => p.id === topCandidates[0][0]);
+  if (!target) return { eliminated: null, tie: false };
+  target.eliminated = true;
+  return { eliminated: { id: target.id, name: target.name }, tie: false };
+}
+
+module.exports = { generateRoomCode, createRoom, shuffleArray, assignRoles, getGameStats, checkWinCondition, resolveNightActions, resolveDayVotes };

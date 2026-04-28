@@ -7,64 +7,81 @@ import HostDashboard from '@/components/HostDashboard';
 import PlayerScreen from '@/components/PlayerScreen';
 import RoleReveal from '@/components/RoleReveal';
 import RoleRevelation from '@/components/RoleRevelation';
+import NightActionScreen from '@/components/NightActionScreen';
+import NightResultScreen from '@/components/NightResultScreen';
+import DayVotingScreen from '@/components/DayVotingScreen';
+import DayResultScreen from '@/components/DayResultScreen';
+import SpectatorScreen from '@/components/SpectatorScreen';
+import GameOverScreen from '@/components/GameOverScreen';
 import Notification from '@/components/Notification';
 
 export default function Home() {
-  const { 
-    gameState, createRoom, joinRoom, updateConfiguration, startGame, 
-    eliminatePlayer, shieldPlayer, revealAll, resetGame, kickPlayer, 
+  const {
+    gameState, createRoom, joinRoom, updateConfiguration, startGame,
+    eliminatePlayer, shieldPlayer, revealAll, resetGame, kickPlayer,
     leaveRoom, requestHostSwitch, acceptHostSwitch, declineHostSwitch,
-    setError, clearError
+    toggleGameMode, submitNightAction, submitDayVote,
+    setError, clearError,
   } = useGame();
-  const [viewState, setViewState] = useState('lobby'); // 'lobby', 'host', 'player', 'roleReveal', 'roleRevelation'
 
-  // Determine what view to show
+  const [viewState, setViewState] = useState('lobby');
+
   useEffect(() => {
-    if (!gameState.roomCode) {
-      setViewState('lobby');
-      return;
+    const {
+      roomCode, isHost, gameStarted, showRoleReveal, showRoleRevelation,
+      myRole, gameMode, currentPhase, isSpectator, nightResult, dayResult,
+      gameOverData,
+    } = gameState;
+
+    if (!roomCode) { setViewState('lobby'); return; }
+
+    // Game over always takes priority
+    if (gameOverData) { setViewState('gameOver'); return; }
+
+    // Role reveal flash (manual + auto both use it)
+    if (showRoleReveal && myRole && !isHost) { setViewState('roleReveal'); return; }
+
+    // Auto mode phases
+    if (gameMode === 'automatic' && gameStarted) {
+      if (nightResult) { setViewState('nightResult'); return; }
+      if (dayResult)   { setViewState('dayResult');   return; }
+      if (currentPhase === 'night') { setViewState(isSpectator ? 'spectator' : 'nightAction'); return; }
+      if (currentPhase === 'day')   { setViewState(isSpectator ? 'spectator' : 'dayVoting');   return; }
     }
 
-    if (gameState.showRoleRevelation) {
-      setViewState('roleRevelation');
-    } else if (gameState.showRoleReveal && !gameState.isHost && gameState.myRole) {
-      setViewState('roleReveal');
-    } else if (gameState.isHost && gameState.gameStarted) {
-      setViewState('host');
-    } else if (gameState.isHost && !gameState.gameStarted) {
-      setViewState('host');
-    } else if (!gameState.isHost && gameState.gameStarted) {
-      setViewState('player');
-    } else if (!gameState.isHost) {
-      setViewState('player');
-    }
-  }, [gameState.roomCode, gameState.isHost, gameState.gameStarted, gameState.showRoleReveal, gameState.showRoleRevelation, gameState.myRole]);
+    // Manual mode
+    if (showRoleRevelation) { setViewState('roleRevelation'); return; }
+    if (isHost)             { setViewState('host');           return; }
+    setViewState('player');
+  }, [
+    gameState.roomCode, gameState.isHost, gameState.gameStarted,
+    gameState.showRoleReveal, gameState.showRoleRevelation, gameState.myRole,
+    gameState.gameMode, gameState.currentPhase, gameState.isSpectator,
+    gameState.nightResult, gameState.dayResult, gameState.gameOverData,
+  ]);
 
   const handleCreateRoom = async (hostName) => {
-    try {
-      await createRoom(hostName);
-    } catch (error) {
-      setError(error.message);
-    }
+    try { await createRoom(hostName); } catch (e) { setError(e.message); }
   };
 
   const handleJoinRoom = async (roomCode, playerName) => {
-    try {
-      await joinRoom(roomCode, playerName);
-    } catch (error) {
-      setError(error.message);
-    }
+    try { await joinRoom(roomCode, playerName); } catch (e) { setError(e.message); }
   };
 
   return (
     <>
-      {/* Dynamic Views */}
-      {viewState === 'lobby' && <Lobby onRoomCreated={handleCreateRoom} onJoinRoom={handleJoinRoom} />}
-      
-      {viewState === 'roleReveal' && (
-        <RoleReveal role={gameState.myRole} onRevealComplete={() => {}} configuration={gameState.configuration} />
+      {viewState === 'lobby' && (
+        <Lobby onRoomCreated={handleCreateRoom} onJoinRoom={handleJoinRoom} />
       )}
-      
+
+      {viewState === 'roleReveal' && (
+        <RoleReveal
+          role={gameState.myRole}
+          onRevealComplete={() => {}}
+          configuration={gameState.configuration}
+        />
+      )}
+
       {viewState === 'roleRevelation' && (
         <RoleRevelation
           players={gameState.players}
@@ -73,14 +90,16 @@ export default function Home() {
           configuration={gameState.configuration}
         />
       )}
-      
+
       {viewState === 'host' && (
         <HostDashboard
           roomCode={gameState.roomCode}
           players={gameState.players}
           configuration={gameState.configuration}
+          gameMode={gameState.gameMode}
           onUpdateConfig={updateConfiguration}
           onStartGame={startGame}
+          onToggleGameMode={toggleGameMode}
           isGameStarted={gameState.gameStarted}
           onRevealAll={revealAll}
           onReset={resetGame}
@@ -93,7 +112,7 @@ export default function Home() {
           onDeclineSwitch={declineHostSwitch}
         />
       )}
-      
+
       {viewState === 'player' && (
         <PlayerScreen
           players={gameState.players}
@@ -105,12 +124,64 @@ export default function Home() {
         />
       )}
 
+      {/* ── Auto mode screens ── */}
+      {viewState === 'nightAction' && (
+        <NightActionScreen
+          players={gameState.players}
+          myRole={gameState.myRole}
+          myPlayerId={gameState.playerId}
+          mafiaTeammates={gameState.mafiaTeammates}
+          timerSeconds={gameState.phaseTimerSeconds}
+          roundNumber={gameState.roundNumber}
+          onSubmit={submitNightAction}
+        />
+      )}
+
+      {viewState === 'nightResult' && (
+        <NightResultScreen
+          eliminated={gameState.nightResult?.eliminated ?? null}
+          saved={gameState.nightResult?.saved ?? false}
+        />
+      )}
+
+      {viewState === 'dayVoting' && (
+        <DayVotingScreen
+          players={gameState.players}
+          myPlayerId={gameState.playerId}
+          isSpectator={gameState.isSpectator}
+          dayVotes={gameState.dayVotes}
+          timerSeconds={gameState.phaseTimerSeconds}
+          roundNumber={gameState.roundNumber}
+          onVote={submitDayVote}
+        />
+      )}
+
+      {viewState === 'dayResult' && (
+        <DayResultScreen
+          eliminated={gameState.dayResult?.eliminated ?? null}
+          tie={gameState.dayResult?.tie ?? false}
+        />
+      )}
+
+      {viewState === 'spectator' && (
+        <SpectatorScreen
+          players={gameState.players}
+          currentPhase={gameState.currentPhase}
+          dayVotes={gameState.dayVotes}
+        />
+      )}
+
+      {viewState === 'gameOver' && (
+        <GameOverScreen
+          winner={gameState.gameOverData?.winner}
+          players={gameState.gameOverData?.players ?? []}
+          onPlayAgain={gameState.isHost ? resetGame : null}
+          onLeave={leaveRoom}
+        />
+      )}
+
       {/* Global Notification Overlay */}
-      <Notification 
-        message={gameState.error} 
-        onClose={clearError} 
-        type="error"
-      />
+      <Notification message={gameState.error} onClose={clearError} type="error" />
     </>
   );
 }
