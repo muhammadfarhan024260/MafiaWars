@@ -223,6 +223,7 @@ export function GameProvider({ children }) {
         phaseTimerSeconds: data.timerSeconds,
         nightResult:       null,
         dayResult:         null,
+        showRoleReveal:    false,
       })),
 
       nightResolved: (data) => setGameState(prev => ({

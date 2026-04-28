@@ -38,8 +38,8 @@ export default function Home() {
     // Game over always takes priority
     if (gameOverData) { setViewState('gameOver'); return; }
 
-    // Role reveal flash (manual + auto both use it)
-    if (showRoleReveal && myRole && !isHost) { setViewState('roleReveal'); return; }
+    // Role reveal flash — in auto mode host is also a player so they see it too
+    if (showRoleReveal && myRole && (!isHost || gameMode === 'automatic')) { setViewState('roleReveal'); return; }
 
     // Auto mode phases
     if (gameMode === 'automatic' && gameStarted) {
