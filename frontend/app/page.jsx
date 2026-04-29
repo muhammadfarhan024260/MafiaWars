@@ -116,6 +116,7 @@ export default function Home() {
       {viewState === 'player' && (
         <PlayerScreen
           players={gameState.players}
+          roomCode={gameState.roomCode}
           isHost={gameState.isHost}
           onRevealAll={revealAll}
           onReset={resetGame}
@@ -178,6 +179,17 @@ export default function Home() {
           onPlayAgain={gameState.isHost ? resetGame : null}
           onLeave={leaveRoom}
         />
+      )}
+
+      {/* ── Host reset button — floats over all auto mode screens ── */}
+      {gameState.gameMode === 'automatic' && gameState.gameStarted && gameState.isHost && viewState !== 'gameOver' && (
+        <button
+          onClick={resetGame}
+          className="fixed bottom-6 right-5 z-50 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all active:scale-95"
+          style={{ background: 'rgba(0,0,0,0.6)', borderColor: 'rgba(197,17,17,0.3)', color: 'rgba(197,17,17,0.7)', backdropFilter: 'blur(8px)' }}
+        >
+          Reset
+        </button>
       )}
 
       {/* Global Notification Overlay */}

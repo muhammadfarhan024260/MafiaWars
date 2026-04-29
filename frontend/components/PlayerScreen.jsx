@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export default function PlayerScreen({ players, onLeave, onRequestHost }) {
+export default function PlayerScreen({ players, roomCode, onLeave, onRequestHost }) {
   const [showRequestConfirm, setShowRequestConfirm] = React.useState(false);
 
   return (
@@ -33,6 +33,11 @@ export default function PlayerScreen({ players, onLeave, onRequestHost }) {
           <p className="text-white/25 text-xs uppercase tracking-[0.3em] leading-relaxed">
             Waiting for the narrator to begin
           </p>
+          {roomCode && (
+            <p className="text-[10px] uppercase tracking-[0.35em] font-bold" style={{ color: 'rgba(255,255,255,0.15)' }}>
+              Room: <span style={{ color: 'rgba(255,255,255,0.35)' }}>{roomCode}</span>
+            </p>
+          )}
         </div>
 
         {/* Player list */}
