@@ -215,25 +215,27 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
     });
 
     // ── Update configuration (host only) ────────────────────────────────────
-    socket.on('updateConfiguration', ({ roomCode, mafiaCount, doctorCount, customRoles }) => {
+    socket.on('updateConfiguration', ({ roomCode, mafiaCount, doctorCount, jesterCount, customRoles }) => {
       const room = rooms.get(roomCode);
       if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
 
       const total = room.players.length;
+      const jCount = Number(jesterCount || 0);
       const sanitizedCustom = (customRoles || []).map(r => ({ name: String(r.name).toUpperCase(), count: Number(r.count), color: String(r.color || '#888888') }));
       const customTotal = sanitizedCustom.reduce((s, r) => s + r.count, 0);
 
-      if (mafiaCount + doctorCount + customTotal > total) {
+      if (mafiaCount + doctorCount + jCount + customTotal > total) {
         socket.emit('error', { message: 'Role count exceeds player count' }); return;
       }
 
       room.configuration.mafiaCount  = Number(mafiaCount);
       room.configuration.doctorCount = Number(doctorCount);
+      room.configuration.jesterCount = jCount;
       room.configuration.customRoles = sanitizedCustom;
 
       io.to(roomCode).emit('configurationUpdated', {
-        mafiaCount, doctorCount, customRoles: sanitizedCustom,
-        civilianCount: total - mafiaCount - doctorCount - customTotal,
+        mafiaCount, doctorCount, jesterCount: jCount, customRoles: sanitizedCustom,
+        civilianCount: total - mafiaCount - doctorCount - jCount - customTotal,
         totalPlayers: total,
       });
     });
@@ -473,6 +475,15 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       room.dayVotes.resolved = true;
       const { eliminated, tie } = resolveDayVotes(room);
       io.to(roomCode).emit('dayResolved', { eliminated, tie });
+
+      // Jester win: any Jester voted out ends the game immediately
+      if (eliminated) {
+        const eliminatedPlayer = room.players.find(p => p.id === eliminated.id);
+        if (eliminatedPlayer?.role === 'JESTER') {
+          setTimeout(() => endGame(room, roomCode, 'JESTER'), 3500);
+          return;
+        }
+      }
 
       const winner = checkWinCondition(room.players);
       if (winner) {

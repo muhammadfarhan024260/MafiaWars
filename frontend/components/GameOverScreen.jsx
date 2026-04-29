@@ -3,17 +3,24 @@
 import React from 'react';
 
 const ROLE_COLORS = {
-  MAFIA:    { color: '#C51111', bg: 'rgba(197,17,17,0.12)',  border: 'rgba(197,17,17,0.3)' },
-  DOCTOR:   { color: '#12A64A', bg: 'rgba(18,166,74,0.12)', border: 'rgba(18,166,74,0.3)' },
+  MAFIA:    { color: '#C51111', bg: 'rgba(197,17,17,0.12)',  border: 'rgba(197,17,17,0.3)'  },
+  DOCTOR:   { color: '#12A64A', bg: 'rgba(18,166,74,0.12)', border: 'rgba(18,166,74,0.3)'  },
   CIVILIAN: { color: '#4A6FFF', bg: 'rgba(74,111,255,0.08)', border: 'rgba(74,111,255,0.2)' },
+  JESTER:   { color: '#FCD34D', bg: 'rgba(217,119,6,0.10)',  border: 'rgba(217,119,6,0.3)'  },
 };
 
 function getRoleStyle(role) {
   return ROLE_COLORS[role] ?? { color: '#888888', bg: 'rgba(136,136,136,0.08)', border: 'rgba(136,136,136,0.2)' };
 }
 
+const WINNER_CFG = {
+  MAFIA:     { color: '#C51111', glow: 'rgba(197,17,17,0.4)', bg: 'rgba(197,17,17,0.12)', label: 'MAFIA',     tagline: 'The shadows win' },
+  CIVILIANS: { color: '#4A6FFF', glow: 'rgba(74,111,255,0.4)', bg: 'rgba(74,111,255,0.10)', label: 'CIVILIANS', tagline: 'Justice prevails' },
+  JESTER:    { color: '#FCD34D', glow: 'rgba(252,211,77,0.4)',  bg: 'rgba(217,119,6,0.10)',  label: 'JESTER',    tagline: 'The fool had the last laugh' },
+};
+
 export default function GameOverScreen({ winner, players, onPlayAgain, onLeave }) {
-  const isMafiaWin = winner === 'MAFIA';
+  const cfg = WINNER_CFG[winner] ?? WINNER_CFG.CIVILIANS;
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center p-6 animate-reveal relative overflow-hidden">
@@ -21,33 +28,29 @@ export default function GameOverScreen({ winner, players, onPlayAgain, onLeave }
       {/* Background glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-72 pointer-events-none"
-        style={{
-          background: isMafiaWin
-            ? 'radial-gradient(ellipse at top, rgba(197,17,17,0.12) 0%, transparent 65%)'
-            : 'radial-gradient(ellipse at top, rgba(74,111,255,0.10) 0%, transparent 65%)',
-        }}
+        style={{ background: `radial-gradient(ellipse at top, ${cfg.bg} 0%, transparent 65%)` }}
       />
 
       <div className="relative z-10 w-full max-w-sm pt-10 space-y-8">
 
         {/* Winner banner */}
         <div className="text-center space-y-1">
-          <p className="text-[9px] uppercase tracking-[0.5em]" style={{ color: isMafiaWin ? 'rgba(197,17,17,0.5)' : 'rgba(74,111,255,0.5)' }}>
-            {isMafiaWin ? 'The shadows win' : 'Justice prevails'}
+          <p className="text-[9px] uppercase tracking-[0.5em]" style={{ color: cfg.color + '80' }}>
+            {cfg.tagline}
           </p>
           <h1
             className="font-bebas leading-none"
             style={{
               fontSize: 'clamp(3.5rem, 20vw, 6rem)',
-              color: isMafiaWin ? '#C51111' : '#4A6FFF',
-              textShadow: isMafiaWin
-                ? '0 0 40px rgba(197,17,17,0.4), 0 0 80px rgba(197,17,17,0.2)'
-                : '0 0 40px rgba(74,111,255,0.4), 0 0 80px rgba(74,111,255,0.2)',
+              color: cfg.color,
+              textShadow: `0 0 40px ${cfg.glow}, 0 0 80px ${cfg.glow}55`,
             }}
           >
-            {isMafiaWin ? 'MAFIA' : 'CIVILIANS'}
+            {cfg.label}
           </h1>
-          <p className="text-white/25 text-xs uppercase tracking-widest">WIN</p>
+          <p className="text-white/25 text-xs uppercase tracking-widest">
+            {winner === 'JESTER' ? 'WINS' : 'WIN'}
+          </p>
         </div>
 
         {/* Full role reveal */}
@@ -95,9 +98,9 @@ export default function GameOverScreen({ winner, players, onPlayAgain, onLeave }
               onClick={onPlayAgain}
               className="w-full py-3.5 rounded-xl font-bold uppercase tracking-widest text-[11px] transition-all"
               style={{
-                background: isMafiaWin ? 'rgba(197,17,17,0.15)' : 'rgba(74,111,255,0.15)',
-                color: isMafiaWin ? '#C51111' : '#4A6FFF',
-                border: `1px solid ${isMafiaWin ? 'rgba(197,17,17,0.3)' : 'rgba(74,111,255,0.3)'}`,
+                background: `${cfg.color}26`,
+                color: cfg.color,
+                border: `1px solid ${cfg.color}4D`,
               }}
             >
               Play Again

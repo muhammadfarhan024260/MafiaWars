@@ -11,7 +11,7 @@ const INITIAL_STATE = {
   playerId:          null,
   isHost:            false,
   players:           [],
-  configuration:     { mafiaCount: 1, doctorCount: 0, customRoles: [] },
+  configuration:     { mafiaCount: 1, doctorCount: 0, jesterCount: 0, customRoles: [] },
   gameStarted:       false,
   myRole:            null,
   mafiaTeammates:    [], // auto mode: other mafia members [{id, name}]
@@ -75,9 +75,9 @@ export function GameProvider({ children }) {
     socket.emit('joinRoom', { roomCode, playerName, userId });
   }), [socket, userId]);
 
-  const updateConfiguration = useCallback((mafiaCount, doctorCount, customRoles = []) => {
+  const updateConfiguration = useCallback((mafiaCount, doctorCount, jesterCount = 0, customRoles = []) => {
     if (!socket) return;
-    socket.emit('updateConfiguration', { roomCode: gameState.roomCode, mafiaCount, doctorCount, customRoles });
+    socket.emit('updateConfiguration', { roomCode: gameState.roomCode, mafiaCount, doctorCount, jesterCount, customRoles });
   }, [socket, gameState.roomCode]);
 
   const startGame    = useCallback(() => socket?.emit('startGame',    { roomCode: gameState.roomCode }), [socket, gameState.roomCode]);
@@ -158,7 +158,9 @@ export function GameProvider({ children }) {
           gameStarted:    data.gameStarted,
           myRole:         data.myRole     ?? prev.myRole,
           showRoleReveal: data.gameStarted && !data.isHost && data.myRole,
-          configuration:  data.configuration ?? prev.configuration,
+          configuration:  data.configuration
+            ? { jesterCount: 0, ...data.configuration }
+            : prev.configuration,
           error:          null,
         }));
         saveSession({ roomCode: data.roomCode, playerId: data.playerId, isHost: data.isHost });
@@ -175,7 +177,12 @@ export function GameProvider({ children }) {
 
       configurationUpdated: (config) => setGameState(prev => ({
         ...prev,
-        configuration: { mafiaCount: config.mafiaCount, doctorCount: config.doctorCount, customRoles: config.customRoles ?? [] },
+        configuration: {
+          mafiaCount:  config.mafiaCount,
+          doctorCount: config.doctorCount,
+          jesterCount: config.jesterCount ?? 0,
+          customRoles: config.customRoles ?? [],
+        },
       })),
 
       gameStarted: (data) => setGameState(prev => ({

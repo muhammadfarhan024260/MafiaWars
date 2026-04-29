@@ -6,6 +6,7 @@ const BASE_ROLE_CFG = {
   MAFIA:    { color: '#C51111', light: '#FF4444', bg: 'rgba(197,17,17,0.08)',  border: 'rgba(197,17,17,0.28)'  },
   DOCTOR:   { color: '#11802D', light: '#19C119', bg: 'rgba(25,193,25,0.08)',  border: 'rgba(25,193,25,0.28)'  },
   CIVILIAN: { color: '#132ED2', light: '#4A6FFF', bg: 'rgba(74,111,255,0.08)', border: 'rgba(74,111,255,0.28)' },
+  JESTER:   { color: '#D97706', light: '#FCD34D', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.28)'  },
 };
 
 function buildRoleCfg(customRoles = []) {

@@ -6,6 +6,7 @@ const ROLE = {
   MAFIA:    { hex: '#C51111', light: '#FF4444', bg: 'rgba(197,17,17,0.1)',  border: 'rgba(197,17,17,0.3)'  },
   DOCTOR:   { hex: '#11802D', light: '#19C119', bg: 'rgba(25,193,25,0.1)',  border: 'rgba(25,193,25,0.3)'  },
   CIVILIAN: { hex: '#132ED2', light: '#4A6FFF', bg: 'rgba(74,111,255,0.1)', border: 'rgba(74,111,255,0.3)' },
+  JESTER:   { hex: '#D97706', light: '#FCD34D', bg: 'rgba(217,119,6,0.1)',  border: 'rgba(217,119,6,0.3)'  },
 };
 
 const ROLE_PALETTE = [
@@ -41,6 +42,7 @@ export default function HostDashboard({
 }) {
   const [mafiaCount,  setMafiaCount]  = useState(configuration?.mafiaCount  ?? 1);
   const [doctorCount, setDoctorCount] = useState(configuration?.doctorCount ?? 0);
+  const [jesterCount, setJesterCount] = useState(configuration?.jesterCount ?? 0);
   const [customRoles, setCustomRoles] = useState((configuration?.customRoles ?? []).map(r => ({ ...r })));
   const [newRoleName, setNewRoleName] = useState('');
   const [kickConfirm, setKickConfirm] = useState(null); // { id, name }
@@ -49,25 +51,30 @@ export default function HostDashboard({
   useEffect(() => {
     setMafiaCount(configuration?.mafiaCount   ?? 1);
     setDoctorCount(configuration?.doctorCount ?? 0);
+    setJesterCount(configuration?.jesterCount ?? 0);
     setCustomRoles((configuration?.customRoles ?? []).map(r => ({ ...r })));
   }, [configuration]);
 
   const total       = players.length;
   const customTotal = customRoles.reduce((s, r) => s + r.count, 0);
-  const civCount    = Math.max(0, total - mafiaCount - doctorCount - customTotal);
+  const civCount    = Math.max(0, total - mafiaCount - doctorCount - jesterCount - customTotal);
   const alive       = players.filter(p => !p.eliminated).length;
 
   const handleMafia = (n) => {
-    const v = Math.min(Math.max(0, n), Math.max(0, total - doctorCount - customTotal));
+    const v = Math.min(Math.max(0, n), Math.max(0, total - doctorCount - jesterCount - customTotal));
     setMafiaCount(v);
   };
   const handleDoctor = (n) => {
-    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - customTotal));
+    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - jesterCount - customTotal));
     setDoctorCount(v);
+  };
+  const handleJester = (n) => {
+    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - doctorCount - customTotal));
+    setJesterCount(v);
   };
   const handleCustomRole = (index, n) => {
     const otherCustomTotal = customRoles.reduce((s, r, i) => i !== index ? s + r.count : s, 0);
-    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - doctorCount - otherCustomTotal));
+    const v = Math.min(Math.max(0, n), Math.max(0, total - mafiaCount - doctorCount - jesterCount - otherCustomTotal));
     setCustomRoles(prev => prev.map((r, i) => i === index ? { ...r, count: v } : r));
   };
   const addCustomRole = () => {
@@ -86,10 +93,10 @@ export default function HostDashboard({
     setCustomRoles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpdate = () => onUpdateConfig(mafiaCount, doctorCount, customRoles);
+  const handleUpdate = () => onUpdateConfig(mafiaCount, doctorCount, jesterCount, customRoles);
 
   const handleStart = () => {
-    onUpdateConfig(mafiaCount, doctorCount, customRoles);
+    onUpdateConfig(mafiaCount, doctorCount, jesterCount, customRoles);
     onStartGame();
   };
 
@@ -256,6 +263,7 @@ export default function HostDashboard({
                   <div className="space-y-4">
                     <CountControl label="Mafia" count={mafiaCount} onChange={handleMafia} color="white" />
                     <CountControl label="Doctor" count={doctorCount} onChange={handleDoctor} color="white" />
+                    <CountControl label="Jester" count={jesterCount} onChange={handleJester} color="white" />
 
                     {/* Custom roles */}
                     {customRoles.map((role, i) => (

@@ -27,6 +27,14 @@ const ROLE_CFG = {
     label:  'CIVILIAN',
     sub:    'Find the Mafia. Vote them out.',
   },
+  JESTER: {
+    color:  '#FFFFFF',
+    light:  '#FFFFFF',
+    glow:   'rgba(255,255,255,0.65)',
+    bg:     'radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 65%)',
+    label:  'JESTER',
+    sub:    'Get voted out to win.',
+  },
 };
 
 function buildCfg(role) {

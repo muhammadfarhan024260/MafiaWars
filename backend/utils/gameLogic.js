@@ -13,7 +13,7 @@ function createRoom(hostSocketId, hostName, hostUserId) {
     hostName,
     players: [],
     gameStarted: false,
-    configuration: { mafiaCount: 1, doctorCount: 0, customRoles: [] },
+    configuration: { mafiaCount: 1, doctorCount: 0, jesterCount: 0, customRoles: [] },
     mafiaWeights: {}, // Stores weights by userId
     // Automatic mode state
     gameMode:     'manual', // 'manual' | 'automatic'
@@ -58,6 +58,7 @@ function assignRoles(room) {
   const { players, configuration, mafiaWeights: roleWeights } = room;
   const mCount = Number(configuration.mafiaCount);
   const dCount = Number(configuration.doctorCount);
+  const jCount = Number(configuration.jesterCount || 0);
   const customRoles = configuration.customRoles || [];
 
   // Initialize weights for players joining for the first time
@@ -67,19 +68,25 @@ function assignRoles(room) {
 
   const pool = [...players];
 
-  // 1. Pick Mafia using weights
+  // 1. Pick Mafia
   for (let m = 0; m < mCount && pool.length > 0; m++) {
     const picked = weightedPick(pool, roleWeights);
     picked.role = 'MAFIA';
   }
 
-  // 2. Pick Doctor using weights (from remaining pool)
+  // 2. Pick Doctor
   for (let d = 0; d < dCount && pool.length > 0; d++) {
     const picked = weightedPick(pool, roleWeights);
     picked.role = 'DOCTOR';
   }
 
-  // 3. Pick custom roles using weights (from remaining pool)
+  // 3. Pick Jester
+  for (let j = 0; j < jCount && pool.length > 0; j++) {
+    const picked = weightedPick(pool, roleWeights);
+    picked.role = 'JESTER';
+  }
+
+  // 4. Pick custom roles
   for (const cr of customRoles) {
     for (let i = 0; i < cr.count && pool.length > 0; i++) {
       const picked = weightedPick(pool, roleWeights);
@@ -87,12 +94,10 @@ function assignRoles(room) {
     }
   }
 
-  // 4. Everyone left is Civilian
+  // 5. Everyone left is Civilian
   pool.forEach(p => { p.role = 'CIVILIAN'; });
 
-  // 5. Update weights for next round
-  //    - Special role players reset to 1 (they just had their turn)
-  //    - Civilians gain +5 pity (capped at 50)
+  // 6. Update weights — Civilian gains +5 pity (cap 50), special roles reset to 1
   players.forEach(p => {
     if (p.role === 'CIVILIAN') {
       roleWeights[p.userId] = Math.min(roleWeights[p.userId] + 5, 50);
@@ -120,7 +125,8 @@ function getGameStats(players) {
 function checkWinCondition(players) {
   const alive = players.filter(p => !p.eliminated);
   const mafiaAlive = alive.filter(p => p.role === 'MAFIA').length;
-  const nonMafiaAlive = alive.length - mafiaAlive;
+  // Jester counts as non-Mafia for this check
+  const nonMafiaAlive = alive.filter(p => p.role !== 'MAFIA').length;
   if (mafiaAlive === 0) return 'CIVILIANS';
   if (mafiaAlive >= nonMafiaAlive) return 'MAFIA';
   return null;
