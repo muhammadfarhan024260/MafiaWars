@@ -36,7 +36,7 @@ export default function HostDashboard({
   roomCode, players, configuration,
   gameMode = 'manual', onToggleGameMode,
   onUpdateConfig, onStartGame, isGameStarted,
-  onRevealAll, onReset, onEliminate, onShield, onKick, onLeave,
+  onRevealAll, onReset, onEliminate, onShield, onKick, onLeave, onCloseRoom,
   pendingHostSwitch, onAcceptSwitch, onDeclineSwitch,
 }) {
   const [mafiaCount,  setMafiaCount]  = useState(configuration?.mafiaCount  ?? 1);
@@ -44,6 +44,7 @@ export default function HostDashboard({
   const [customRoles, setCustomRoles] = useState((configuration?.customRoles ?? []).map(r => ({ ...r })));
   const [newRoleName, setNewRoleName] = useState('');
   const [kickConfirm, setKickConfirm] = useState(null); // { id, name }
+  const [closeConfirm, setCloseConfirm] = useState(false);
 
   useEffect(() => {
     setMafiaCount(configuration?.mafiaCount   ?? 1);
@@ -139,16 +140,23 @@ export default function HostDashboard({
             </div>
             <p className="text-white/20 text-[10px] uppercase font-bold tracking-[0.4em]">Narrator Control Center</p>
           </div>
-          <div className="flex items-center gap-6 border-l border-white/5 pl-6">
+          <div className="flex items-center gap-4 border-l border-white/5 pl-6">
             <div>
               <p className="text-[9px] uppercase tracking-widest text-white/20 font-bold mb-1">Alive</p>
               <p className="font-bebas text-3xl leading-none text-white">{alive}<span className="text-white/10 text-xl">/{total}</span></p>
             </div>
-            <button 
+            <button
               onClick={onLeave}
               className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white/30 border border-white/5 hover:bg-white/5 hover:text-white transition-all"
             >
               Leave
+            </button>
+            <button
+              onClick={() => setCloseConfirm(true)}
+              className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all"
+              style={{ color: 'rgba(197,17,17,0.6)', borderColor: 'rgba(197,17,17,0.2)', background: 'rgba(197,17,17,0.06)' }}
+            >
+              End Room
             </button>
           </div>
         </div>
@@ -395,6 +403,47 @@ export default function HostDashboard({
                 </button>
                 <button
                   onClick={() => setKickConfirm(null)}
+                  className="w-full py-3 text-[10px] uppercase tracking-widest font-bold text-white/30 hover:text-white/60 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── End Room Confirmation Modal ── */}
+        {closeConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in shadow-2xl">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setCloseConfirm(false)} />
+            <div className="relative glass-card w-full max-w-xs p-6 space-y-6 text-center border-white/5 animate-role-pop">
+              <div className="space-y-2">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 border"
+                  style={{ background: 'rgba(197,17,17,0.1)', borderColor: 'rgba(197,17,17,0.25)' }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C51111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6M14 11v6" />
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                  </svg>
+                </div>
+                <h3 className="font-bebas text-3xl tracking-widest text-white">END ROOM</h3>
+                <p className="text-white/50 text-xs leading-relaxed">
+                  This will <span className="text-white font-bold">remove everyone</span> and permanently close the room. This cannot be undone.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { onCloseRoom?.(); setCloseConfirm(false); }}
+                  className="w-full py-3.5 rounded-xl font-bold uppercase tracking-widest text-[11px] transition-all"
+                  style={{ background: 'rgba(197,17,17,0.15)', color: '#FF4444', border: '1px solid rgba(197,17,17,0.35)' }}
+                >
+                  Yes, End Room
+                </button>
+                <button
+                  onClick={() => setCloseConfirm(false)}
                   className="w-full py-3 text-[10px] uppercase tracking-widest font-bold text-white/30 hover:text-white/60 transition-colors"
                 >
                   Cancel

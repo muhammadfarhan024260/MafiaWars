@@ -19,7 +19,7 @@ export default function Home() {
   const {
     gameState, createRoom, joinRoom, updateConfiguration, startGame,
     eliminatePlayer, shieldPlayer, revealAll, resetGame, kickPlayer,
-    leaveRoom, requestHostSwitch, acceptHostSwitch, declineHostSwitch,
+    leaveRoom, closeRoom, requestHostSwitch, acceptHostSwitch, declineHostSwitch,
     toggleGameMode, submitNightAction, submitDayVote,
     setError, clearError,
   } = useGame();
@@ -107,6 +107,7 @@ export default function Home() {
           onShield={shieldPlayer}
           onKick={kickPlayer}
           onLeave={leaveRoom}
+          onCloseRoom={closeRoom}
           pendingHostSwitch={gameState.pendingHostSwitch}
           onAcceptSwitch={acceptHostSwitch}
           onDeclineSwitch={declineHostSwitch}

@@ -550,6 +550,17 @@ module.exports = function registerGameEvents(io, rooms, gracePeriodTimers) {
       }
     });
 
+    // ── Close room (host only) ──────────────────────────────────────────────
+    socket.on('closeRoom', ({ roomCode }) => {
+      const room = rooms.get(roomCode);
+      if (!room || room.hostId !== socket.id) { socket.emit('error', { message: 'Unauthorized' }); return; }
+
+      clearTimeout(room.phaseTimer);
+      io.to(roomCode).emit('roomClosed', { message: 'The host has ended the room.' });
+      rooms.delete(roomCode);
+      console.log(`Room closed by host: ${roomCode}`);
+    });
+
     // ── Get room state ──────────────────────────────────────────────────────
     socket.on('getRoomState', ({ roomCode }) => {
       const room = rooms.get(roomCode);

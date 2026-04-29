@@ -95,6 +95,14 @@ export function GameProvider({ children }) {
     }
   }, [socket, gameState.roomCode, userId]);
 
+  const closeRoom = useCallback(() => {
+    if (socket && gameState.roomCode) {
+      socket.emit('closeRoom', { roomCode: gameState.roomCode });
+      clearSession();
+      setGameState(INITIAL_STATE);
+    }
+  }, [socket, gameState.roomCode]);
+
   const toggleGameMode   = useCallback((gameMode) => socket?.emit('toggleGameMode', { roomCode: gameState.roomCode, gameMode }), [socket, gameState.roomCode]);
   const submitNightAction = useCallback((targetId) => socket?.emit('submitNightAction', { roomCode: gameState.roomCode, userId, targetId }), [socket, gameState.roomCode, userId]);
   const submitDayVote     = useCallback((targetId) => socket?.emit('submitDayVote',     { roomCode: gameState.roomCode, userId, targetId }), [socket, gameState.roomCode, userId]);
@@ -287,6 +295,7 @@ export function GameProvider({ children }) {
       revealAll, resetGame, kickPlayer, leaveRoom,
       requestHostSwitch, acceptHostSwitch, declineHostSwitch,
       toggleGameMode, submitNightAction, submitDayVote,
+      closeRoom,
       setError, clearError
     }}>
       {children}
